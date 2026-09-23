@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -188,7 +187,7 @@
     position:relative;
     min-width:0;              /* let this flex item actually shrink instead of overflowing */
     width:fit-content;
-    max-width:100%;           /* real size cap now lives on .img-el below */
+    max-width:100%;           /* real size cap lives on .img-el below */
     background:var(--c-white);
     padding:12px 12px 0;
     border-radius:8px;
@@ -286,14 +285,25 @@
      ============================================================ */
   .site-footer{
     flex:0 0 auto; z-index:1;
-    text-align:center;
+    display:flex; align-items:center; justify-content:space-between;
+    gap:10px; flex-wrap:wrap;
     padding:8px 14px;
     font-size:.72rem;
     color:var(--c-stone);
     background:linear-gradient(0deg, rgba(20,16,14,.75), rgba(20,16,14,.35));
     border-top:1px solid rgba(211,162,72,.25);
   }
-  .site-footer strong{ color:var(--c-gold); font-weight:600; }
+  .site-footer p{ margin:0; }
+
+  .lang-switch{ display:flex; gap:4px; }
+  .lang-btn{
+    background:none; border:1px solid rgba(211,162,72,.35);
+    color:var(--c-stone); cursor:pointer;
+    font-size:.66rem; letter-spacing:.05em; font-weight:600;
+    padding:.2rem .45rem; border-radius:4px;
+  }
+  .lang-btn:hover, .lang-btn:focus-visible{ color:var(--c-gold); border-color:var(--c-gold); }
+  .lang-btn[aria-current="true"]{ color:var(--c-black); background:var(--c-gold); border-color:var(--c-gold); }
 
   :focus-visible{ outline:2px solid var(--c-gold); outline-offset:2px; }
 </style>
@@ -334,40 +344,41 @@
   </div>
 
   <!-- ============================================================
-       NAVIGATION
+       NAVIGATION — text content here is just the pre-JS fallback;
+       actual text is set from I18N (see <script>) via data-i18n.
        ============================================================ -->
   <nav class="topnav" aria-label="Main navigation">
     <div class="brand">
       <span class="brand-mark" aria-hidden="true">&#9992;</span>
-      <span class="brand-main">Erasmus</span>
-      <span class="brand-sub">Schkeuditz &middot; Vitalis</span>
+      <span class="brand-main" data-i18n="brandMain">Erasmus</span>
+      <span class="brand-sub" data-i18n="brandSub">Schkeuditz &middot; Vitalis</span>
     </div>
 
     <ul class="menu" id="mainMenu" role="menubar">
       <li role="none">
-        <button type="button" class="menu-link" data-gallery="home" role="menuitem" aria-current="page">Home</button>
+        <button type="button" class="menu-link" data-gallery="home" data-i18n="nav.home" role="menuitem" aria-current="page">Home</button>
       </li>
 
       <li role="none" class="has-dropdown">
-        <button type="button" class="menu-link dropdown-toggle" id="practiceToggle"
+        <button type="button" class="menu-link dropdown-toggle" id="practiceToggle" data-i18n="nav.practice"
                 aria-haspopup="true" aria-expanded="false" role="menuitem">Practice</button>
         <ul class="dropdown" role="menu" aria-labelledby="practiceToggle">
-          <li role="none"><button type="button" class="dropdown-link" data-gallery="week1" role="menuitem">Week 1</button></li>
-          <li role="none"><button type="button" class="dropdown-link" data-gallery="week2" role="menuitem">Week 2</button></li>
+          <li role="none"><button type="button" class="dropdown-link" data-gallery="week1" data-i18n="nav.week1" role="menuitem">Week 1</button></li>
+          <li role="none"><button type="button" class="dropdown-link" data-gallery="week2" data-i18n="nav.week2" role="menuitem">Week 2</button></li>
         </ul>
       </li>
 
       <li role="none" class="has-dropdown">
-        <button type="button" class="menu-link dropdown-toggle" id="cultureToggle"
+        <button type="button" class="menu-link dropdown-toggle" id="cultureToggle" data-i18n="nav.culture"
                 aria-haspopup="true" aria-expanded="false" role="menuitem">Culture</button>
         <ul class="dropdown" role="menu" aria-labelledby="cultureToggle">
-          <li role="none"><button type="button" class="dropdown-link" data-gallery="leipzig" role="menuitem">Leipzig</button></li>
-          <li role="none"><button type="button" class="dropdown-link" data-gallery="dresden" role="menuitem">Dresden</button></li>
+          <li role="none"><button type="button" class="dropdown-link" data-gallery="leipzig" data-i18n="nav.leipzig" role="menuitem">Leipzig</button></li>
+          <li role="none"><button type="button" class="dropdown-link" data-gallery="dresden" data-i18n="nav.dresden" role="menuitem">Dresden</button></li>
         </ul>
       </li>
 
       <li role="none">
-        <button type="button" class="menu-link" data-gallery="freetime" role="menuitem">Free Time</button>
+        <button type="button" class="menu-link" data-gallery="freetime" data-i18n="nav.freetime" role="menuitem">Free Time</button>
       </li>
     </ul>
   </nav>
@@ -377,7 +388,7 @@
        ============================================================ -->
   <main class="viewer-main">
     <div class="viewer">
-      <button type="button" class="arrow arrow-prev" id="prevBtn" aria-label="Previous photo">&#8249;</button>
+      <button type="button" class="arrow arrow-prev" id="prevBtn" data-i18n-aria="prevLabel" aria-label="Previous photo">&#8249;</button>
 
       <figure class="image-frame" id="imageFrame">
         <div class="stamp" aria-hidden="true">
@@ -393,7 +404,7 @@
             </svg>
             <span class="ph-text" id="placeholderText"></span>
           </div>
-          <!-- EDIT: image "src" values live in GALLERY_DATA below in the <script> -->
+          <!-- src is populated from IMAGES (see <script>) — never edited directly here -->
           <img class="img-el" id="galleryImage" src="" alt="" />
         </div>
 
@@ -405,15 +416,16 @@
         </figcaption>
       </figure>
 
-      <button type="button" class="arrow arrow-next" id="nextBtn" aria-label="Next photo">&#8250;</button>
+      <button type="button" class="arrow arrow-next" id="nextBtn" data-i18n-aria="nextLabel" aria-label="Next photo">&#8250;</button>
     </div>
   </main>
 
   <!-- ============================================================
-       FOOTER — EDIT credit text here
+       FOOTER — EDIT credit text via I18N.<lang>.ui.footer below
        ============================================================ -->
   <footer class="site-footer">
-    <p>Made by ___</p>
+    <p data-i18n="footer">Made by ___</p>
+    <div class="lang-switch" id="langSwitch" role="group" aria-label="Language"></div>
   </footer>
 
 </div>
@@ -423,81 +435,199 @@
   "use strict";
 
   /* ============================================================
-     GALLERY DATA — EDIT IMAGE PATHS, ALT TEXT AND CAPTIONS HERE
-     Each gallery has a display label (used in the nav "kicker")
-     and exactly 5 images: { src, alt, caption, blurb }.
-     Replace any "src" with a real file (e.g. "images/week1-1.jpg")
-     and the placeholder will automatically be replaced by the photo.
+     GALLERY STRUCTURE — language-independent: which photo ids
+     belong to which gallery, and in what order. Add/remove ids
+     freely; nothing else needs to change size in sync with it.
      ============================================================ */
-  const GALLERY_DATA = {
-    home: {
-      label: "Erasmus, Schkeuditz",
-      images: [
-        { src:"images/home-1.jpg", alt:"Placeholder photo: the group at the airport before departure", caption:"Arrival in Germany", blurb:"Lorem ipsum dolor sit amet, consectetur." },
-        { src:"images/home-2.jpg", alt:"Placeholder photo: first street view of Schkeuditz", caption:"First look at Schkeuditz", blurb:"Sed do eiusmod tempor incididunt ut labore." },
-        { src:"images/home-3.jpg", alt:"Placeholder photo: meeting the host company team", caption:"Meeting the team", blurb:"Ut enim ad minim veniam, quis nostrud." },
-        { src:"images/home-4.jpg", alt:"Placeholder photo: unpacking at the apartment", caption:"Settling into the apartment", blurb:"Duis aute irure dolor in reprehenderit." },
-        { src:"images/home-5.jpg", alt:"Placeholder photo: the group posing before day one", caption:"Ready for two weeks ahead", blurb:"Excepteur sint occaecat cupidatat non proident." }
-      ]
+  const GALLERY_STRUCTURE = {
+    home:     ["home-1","home-2","home-3","home-4","home-5"],
+    week1:    ["week1-1","week1-2","week1-3","week1-4","week1-5"],
+    week2:    ["week2-1","week2-2","week2-3","week2-4","week2-5"],
+    leipzig:  ["leipzig-1","leipzig-2","leipzig-3","leipzig-4","leipzig-5"],
+    dresden:  ["dresden-1","dresden-2","dresden-3","dresden-4","dresden-5"],
+    freetime: ["freetime-1","freetime-2","freetime-3","freetime-4","freetime-5"]
+  };
+
+  /* ============================================================
+     IMAGES — one entry per photo id, language-independent (a
+     photo isn't translated). "src" is "" until a real photo is
+     embedded; the viewer shows the postcard placeholder for any
+     id with an empty src. converter.py writes into this block by
+     matching the IMAGES:START / IMAGES:END markers below — don't
+     rename or remove them.
+     ============================================================ */
+  /* ===== IMAGES:START ===== */
+  const IMAGES = {
+    "home-1": { src:"" }, "home-2": { src:"" }, "home-3": { src:"" }, "home-4": { src:"" }, "home-5": { src:"" },
+    "week1-1": { src:"" }, "week1-2": { src:"" }, "week1-3": { src:"" }, "week1-4": { src:"" }, "week1-5": { src:"" },
+    "week2-1": { src:"" }, "week2-2": { src:"" }, "week2-3": { src:"" }, "week2-4": { src:"" }, "week2-5": { src:"" },
+    "leipzig-1": { src:"" }, "leipzig-2": { src:"" }, "leipzig-3": { src:"" }, "leipzig-4": { src:"" }, "leipzig-5": { src:"" },
+    "dresden-1": { src:"" }, "dresden-2": { src:"" }, "dresden-3": { src:"" }, "dresden-4": { src:"" }, "dresden-5": { src:"" },
+    "freetime-1": { src:"" }, "freetime-2": { src:"" }, "freetime-3": { src:"" }, "freetime-4": { src:"" }, "freetime-5": { src:"" }
+  };
+  /* ===== IMAGES:END ===== */
+
+  /* ============================================================
+     I18N — every user-facing string, per language. "captions"
+     is keyed by photo id (caption/blurb/alt). "blurb" is filler
+     Lorem Ipsum on purpose and stays identical across languages —
+     it's not real content. To add a language: add one block below
+     with the same shape, then add its code to LANGUAGES.
+     ============================================================ */
+  /* ===== I18N:START ===== */
+  const I18N = {
+    en: {
+      ui: {
+        brandMain:"Erasmus", brandSub:"Schkeuditz · Vitalis",
+        nav:{ home:"Home", practice:"Practice", week1:"Week 1", week2:"Week 2", culture:"Culture", leipzig:"Leipzig", dresden:"Dresden", freetime:"Free Time" },
+        galleryLabel:{ home:"Erasmus, Schkeuditz", week1:"Practice, Week 1", week2:"Practice, Week 2", leipzig:"Culture, Leipzig", dresden:"Culture, Dresden", freetime:"Free Time" },
+        footer:"Made by ___",
+        emptyTitle:"Nothing here yet", emptyBody:"No photos in {gallery} yet.",
+        placeholderNote:"{caption} — photo coming soon",
+        prevLabel:"Previous photo", nextLabel:"Next photo"
+      },
+      captions: {
+        "home-1":{ caption:"Arrival in Germany", blurb:"Lorem ipsum dolor sit amet, consectetur.", alt:"Placeholder photo: the group at the airport before departure" },
+        "home-2":{ caption:"First look at Schkeuditz", blurb:"Sed do eiusmod tempor incididunt ut labore.", alt:"Placeholder photo: first street view of Schkeuditz" },
+        "home-3":{ caption:"Meeting the team", blurb:"Ut enim ad minim veniam, quis nostrud.", alt:"Placeholder photo: meeting the host company team" },
+        "home-4":{ caption:"Settling into the apartment", blurb:"Duis aute irure dolor in reprehenderit.", alt:"Placeholder photo: unpacking at the apartment" },
+        "home-5":{ caption:"Ready for two weeks ahead", blurb:"Excepteur sint occaecat cupidatat non proident.", alt:"Placeholder photo: the group posing before day one" },
+        "week1-1":{ caption:"Our first day at the company", blurb:"Lorem ipsum dolor sit amet, consectetur.", alt:"Placeholder photo: entering the office on day one" },
+        "week1-2":{ caption:"Office tour and introductions", blurb:"Sed do eiusmod tempor incididunt ut labore.", alt:"Placeholder photo: office tour with a colleague" },
+        "week1-3":{ caption:"First lines of code on the job", blurb:"Ut enim ad minim veniam, quis nostrud.", alt:"Placeholder photo: writing the first lines of code" },
+        "week1-4":{ caption:"Lunch break with colleagues", blurb:"Duis aute irure dolor in reprehenderit.", alt:"Placeholder photo: lunch table with the team" },
+        "week1-5":{ caption:"Wrapping up week one", blurb:"Excepteur sint occaecat cupidatat non proident.", alt:"Placeholder photo: leaving the office on Friday" },
+        "week2-1":{ caption:"Back at it, week two", blurb:"Lorem ipsum dolor sit amet, consectetur.", alt:"Placeholder photo: back at the desk on Monday" },
+        "week2-2":{ caption:"Presenting our project", blurb:"Sed do eiusmod tempor incididunt ut labore.", alt:"Placeholder photo: presenting the project to the team" },
+        "week2-3":{ caption:"Debugging together", blurb:"Ut enim ad minim veniam, quis nostrud.", alt:"Placeholder photo: two people debugging at a screen" },
+        "week2-4":{ caption:"Certificate ceremony", blurb:"Duis aute irure dolor in reprehenderit.", alt:"Placeholder photo: receiving the completion certificate" },
+        "week2-5":{ caption:"Saying goodbye to the office", blurb:"Excepteur sint occaecat cupidatat non proident.", alt:"Placeholder photo: last goodbyes at the office" },
+        "leipzig-1":{ caption:"Exploring Leipzig", blurb:"Lorem ipsum dolor sit amet, consectetur.", alt:"Placeholder photo: walking through central Leipzig" },
+        "leipzig-2":{ caption:"Augustusplatz in the afternoon", blurb:"Sed do eiusmod tempor incididunt ut labore.", alt:"Placeholder photo: Augustusplatz square in the afternoon" },
+        "leipzig-3":{ caption:"Leipzig's old town", blurb:"Ut enim ad minim veniam, quis nostrud.", alt:"Placeholder photo: narrow lanes in Leipzig's old town" },
+        "leipzig-4":{ caption:"Coffee break in the city", blurb:"Duis aute irure dolor in reprehenderit.", alt:"Placeholder photo: coffee at a Leipzig café" },
+        "leipzig-5":{ caption:"Street musicians downtown", blurb:"Excepteur sint occaecat cupidatat non proident.", alt:"Placeholder photo: street musicians performing downtown" },
+        "dresden-1":{ caption:"A day trip to Dresden", blurb:"Lorem ipsum dolor sit amet, consectetur.", alt:"Placeholder photo: arriving in Dresden for a day trip" },
+        "dresden-2":{ caption:"The Frauenkirche", blurb:"Sed do eiusmod tempor incididunt ut labore.", alt:"Placeholder photo: the Frauenkirche dome" },
+        "dresden-3":{ caption:"Along the Elbe river", blurb:"Ut enim ad minim veniam, quis nostrud.", alt:"Placeholder photo: walking along the Elbe river" },
+        "dresden-4":{ caption:"Dresden's old market", blurb:"Duis aute irure dolor in reprehenderit.", alt:"Placeholder photo: stalls at Dresden's old market" },
+        "dresden-5":{ caption:"Golden hour over the city", blurb:"Excepteur sint occaecat cupidatat non proident.", alt:"Placeholder photo: sunset light over the old town skyline" },
+        "freetime-1":{ caption:"Weekend adventures", blurb:"Lorem ipsum dolor sit amet, consectetur.", alt:"Placeholder photo: the group on a weekend outing" },
+        "freetime-2":{ caption:"Trying local food", blurb:"Sed do eiusmod tempor incididunt ut labore.", alt:"Placeholder photo: trying a local German dish" },
+        "freetime-3":{ caption:"Evenings with the group", blurb:"Ut enim ad minim veniam, quis nostrud.", alt:"Placeholder photo: an evening get-together with the group" },
+        "freetime-4":{ caption:"Exploring the countryside", blurb:"Duis aute irure dolor in reprehenderit.", alt:"Placeholder photo: a walk through the countryside" },
+        "freetime-5":{ caption:"Last night in Germany", blurb:"Excepteur sint occaecat cupidatat non proident.", alt:"Placeholder photo: the group on their final evening" }
+      }
     },
-    week1: {
-      label: "Practice, Week 1",
-      images: [
-        { src:"images/week1-1.jpg", alt:"Placeholder photo: entering the office on day one", caption:"Our first day at the company", blurb:"Lorem ipsum dolor sit amet, consectetur." },
-        { src:"images/week1-2.jpg", alt:"Placeholder photo: office tour with a colleague", caption:"Office tour and introductions", blurb:"Sed do eiusmod tempor incididunt ut labore." },
-        { src:"images/week1-3.jpg", alt:"Placeholder photo: writing the first lines of code", caption:"First lines of code on the job", blurb:"Ut enim ad minim veniam, quis nostrud." },
-        { src:"images/week1-4.jpg", alt:"Placeholder photo: lunch table with the team", caption:"Lunch break with colleagues", blurb:"Duis aute irure dolor in reprehenderit." },
-        { src:"images/week1-5.jpg", alt:"Placeholder photo: leaving the office on Friday", caption:"Wrapping up week one", blurb:"Excepteur sint occaecat cupidatat non proident." }
-      ]
+    de: {
+      ui: {
+        brandMain:"Erasmus", brandSub:"Schkeuditz · Vitalis",
+        nav:{ home:"Start", practice:"Praxis", week1:"Woche 1", week2:"Woche 2", culture:"Kultur", leipzig:"Leipzig", dresden:"Dresden", freetime:"Freizeit" },
+        galleryLabel:{ home:"Erasmus, Schkeuditz", week1:"Praxis, Woche 1", week2:"Praxis, Woche 2", leipzig:"Kultur, Leipzig", dresden:"Kultur, Dresden", freetime:"Freizeit" },
+        footer:"Erstellt von ___",
+        emptyTitle:"Noch nichts hier", emptyBody:"Noch keine Fotos in {gallery}.",
+        placeholderNote:"{caption} — Foto folgt",
+        prevLabel:"Vorheriges Foto", nextLabel:"Nächstes Foto"
+      },
+      captions: {
+        "home-1":{ caption:"Ankunft in Deutschland", blurb:"Lorem ipsum dolor sit amet, consectetur.", alt:"Platzhalterfoto: die Gruppe am Flughafen vor der Abreise" },
+        "home-2":{ caption:"Erster Eindruck von Schkeuditz", blurb:"Sed do eiusmod tempor incididunt ut labore.", alt:"Platzhalterfoto: erste Straßenansicht von Schkeuditz" },
+        "home-3":{ caption:"Das Team kennenlernen", blurb:"Ut enim ad minim veniam, quis nostrud.", alt:"Platzhalterfoto: Treffen mit dem Team des Unternehmens" },
+        "home-4":{ caption:"Einleben in der Wohnung", blurb:"Duis aute irure dolor in reprehenderit.", alt:"Platzhalterfoto: Auspacken in der Wohnung" },
+        "home-5":{ caption:"Bereit für zwei Wochen", blurb:"Excepteur sint occaecat cupidatat non proident.", alt:"Platzhalterfoto: die Gruppe vor dem ersten Arbeitstag" },
+        "week1-1":{ caption:"Unser erster Tag im Unternehmen", blurb:"Lorem ipsum dolor sit amet, consectetur.", alt:"Platzhalterfoto: Ankunft im Büro am ersten Tag" },
+        "week1-2":{ caption:"Rundgang und Vorstellung im Büro", blurb:"Sed do eiusmod tempor incididunt ut labore.", alt:"Platzhalterfoto: Bürorundgang mit einem Kollegen" },
+        "week1-3":{ caption:"Die ersten Zeilen Code im Job", blurb:"Ut enim ad minim veniam, quis nostrud.", alt:"Platzhalterfoto: die ersten Zeilen Code schreiben" },
+        "week1-4":{ caption:"Mittagspause mit Kollegen", blurb:"Duis aute irure dolor in reprehenderit.", alt:"Platzhalterfoto: Mittagstisch mit dem Team" },
+        "week1-5":{ caption:"Abschluss der ersten Woche", blurb:"Excepteur sint occaecat cupidatat non proident.", alt:"Platzhalterfoto: Feierabend im Büro am Freitag" },
+        "week2-1":{ caption:"Zurück an die Arbeit, Woche zwei", blurb:"Lorem ipsum dolor sit amet, consectetur.", alt:"Platzhalterfoto: zurück am Schreibtisch am Montag" },
+        "week2-2":{ caption:"Präsentation unseres Projekts", blurb:"Sed do eiusmod tempor incididunt ut labore.", alt:"Platzhalterfoto: Präsentation des Projekts vor dem Team" },
+        "week2-3":{ caption:"Gemeinsames Debugging", blurb:"Ut enim ad minim veniam, quis nostrud.", alt:"Platzhalterfoto: zwei Personen beim Debugging am Bildschirm" },
+        "week2-4":{ caption:"Übergabe der Zertifikate", blurb:"Duis aute irure dolor in reprehenderit.", alt:"Platzhalterfoto: Übergabe des Abschlusszertifikats" },
+        "week2-5":{ caption:"Abschied vom Büro", blurb:"Excepteur sint occaecat cupidatat non proident.", alt:"Platzhalterfoto: letzter Abschied im Büro" },
+        "leipzig-1":{ caption:"Leipzig entdecken", blurb:"Lorem ipsum dolor sit amet, consectetur.", alt:"Platzhalterfoto: Spaziergang durch die Leipziger Innenstadt" },
+        "leipzig-2":{ caption:"Augustusplatz am Nachmittag", blurb:"Sed do eiusmod tempor incididunt ut labore.", alt:"Platzhalterfoto: der Augustusplatz am Nachmittag" },
+        "leipzig-3":{ caption:"Leipzigs Altstadt", blurb:"Ut enim ad minim veniam, quis nostrud.", alt:"Platzhalterfoto: enge Gassen in Leipzigs Altstadt" },
+        "leipzig-4":{ caption:"Kaffeepause in der Stadt", blurb:"Duis aute irure dolor in reprehenderit.", alt:"Platzhalterfoto: Kaffee in einem Leipziger Café" },
+        "leipzig-5":{ caption:"Straßenmusiker in der Innenstadt", blurb:"Excepteur sint occaecat cupidatat non proident.", alt:"Platzhalterfoto: Straßenmusiker in der Innenstadt" },
+        "dresden-1":{ caption:"Tagesausflug nach Dresden", blurb:"Lorem ipsum dolor sit amet, consectetur.", alt:"Platzhalterfoto: Ankunft in Dresden für den Tagesausflug" },
+        "dresden-2":{ caption:"Die Frauenkirche", blurb:"Sed do eiusmod tempor incididunt ut labore.", alt:"Platzhalterfoto: die Kuppel der Frauenkirche" },
+        "dresden-3":{ caption:"Entlang der Elbe", blurb:"Ut enim ad minim veniam, quis nostrud.", alt:"Platzhalterfoto: Spaziergang entlang der Elbe" },
+        "dresden-4":{ caption:"Dresdens Altmarkt", blurb:"Duis aute irure dolor in reprehenderit.", alt:"Platzhalterfoto: Stände auf dem Dresdner Altmarkt" },
+        "dresden-5":{ caption:"Goldene Stunde über der Stadt", blurb:"Excepteur sint occaecat cupidatat non proident.", alt:"Platzhalterfoto: Sonnenuntergang über der Altstadt-Silhouette" },
+        "freetime-1":{ caption:"Wochenendabenteuer", blurb:"Lorem ipsum dolor sit amet, consectetur.", alt:"Platzhalterfoto: die Gruppe bei einem Wochenendausflug" },
+        "freetime-2":{ caption:"Lokale Küche probieren", blurb:"Sed do eiusmod tempor incididunt ut labore.", alt:"Platzhalterfoto: Probieren eines deutschen Gerichts" },
+        "freetime-3":{ caption:"Abende mit der Gruppe", blurb:"Ut enim ad minim veniam, quis nostrud.", alt:"Platzhalterfoto: ein abendliches Treffen mit der Gruppe" },
+        "freetime-4":{ caption:"Die Landschaft erkunden", blurb:"Duis aute irure dolor in reprehenderit.", alt:"Platzhalterfoto: ein Spaziergang durch die Landschaft" },
+        "freetime-5":{ caption:"Letzte Nacht in Deutschland", blurb:"Excepteur sint occaecat cupidatat non proident.", alt:"Platzhalterfoto: die Gruppe am letzten Abend" }
+      }
     },
-    week2: {
-      label: "Practice, Week 2",
-      images: [
-        { src:"images/week2-1.jpg", alt:"Placeholder photo: back at the desk on Monday", caption:"Back at it, week two", blurb:"Lorem ipsum dolor sit amet, consectetur." },
-        { src:"images/week2-2.jpg", alt:"Placeholder photo: presenting the project to the team", caption:"Presenting our project", blurb:"Sed do eiusmod tempor incididunt ut labore." },
-        { src:"images/week2-3.jpg", alt:"Placeholder photo: two people debugging at a screen", caption:"Debugging together", blurb:"Ut enim ad minim veniam, quis nostrud." },
-        { src:"images/week2-4.jpg", alt:"Placeholder photo: receiving the completion certificate", caption:"Certificate ceremony", blurb:"Duis aute irure dolor in reprehenderit." },
-        { src:"images/week2-5.jpg", alt:"Placeholder photo: last goodbyes at the office", caption:"Saying goodbye to the office", blurb:"Excepteur sint occaecat cupidatat non proident." }
-      ]
-    },
-    leipzig: {
-      label: "Culture, Leipzig",
-      images: [
-        { src:"images/leipzig-1.jpg", alt:"Placeholder photo: walking through central Leipzig", caption:"Exploring Leipzig", blurb:"Lorem ipsum dolor sit amet, consectetur." },
-        { src:"images/leipzig-2.jpg", alt:"Placeholder photo: Augustusplatz square in the afternoon", caption:"Augustusplatz in the afternoon", blurb:"Sed do eiusmod tempor incididunt ut labore." },
-        { src:"images/leipzig-3.jpg", alt:"Placeholder photo: narrow lanes in Leipzig's old town", caption:"Leipzig's old town", blurb:"Ut enim ad minim veniam, quis nostrud." },
-        { src:"images/leipzig-4.jpg", alt:"Placeholder photo: coffee at a Leipzig café", caption:"Coffee break in the city", blurb:"Duis aute irure dolor in reprehenderit." },
-        { src:"images/leipzig-5.jpg", alt:"Placeholder photo: street musicians performing downtown", caption:"Street musicians downtown", blurb:"Excepteur sint occaecat cupidatat non proident." }
-      ]
-    },
-    dresden: {
-      label: "Culture, Dresden",
-      images: [
-        { src:"images/dresden-1.jpg", alt:"Placeholder photo: arriving in Dresden for a day trip", caption:"A day trip to Dresden", blurb:"Lorem ipsum dolor sit amet, consectetur." },
-        { src:"images/dresden-2.jpg", alt:"Placeholder photo: the Frauenkirche dome", caption:"The Frauenkirche", blurb:"Sed do eiusmod tempor incididunt ut labore." },
-        { src:"images/dresden-3.jpg", alt:"Placeholder photo: walking along the Elbe river", caption:"Along the Elbe river", blurb:"Ut enim ad minim veniam, quis nostrud." },
-        { src:"images/dresden-4.jpg", alt:"Placeholder photo: stalls at Dresden's old market", caption:"Dresden's old market", blurb:"Duis aute irure dolor in reprehenderit." },
-        { src:"images/dresden-5.jpg", alt:"Placeholder photo: sunset light over the old town skyline", caption:"Golden hour over the city", blurb:"Excepteur sint occaecat cupidatat non proident." }
-      ]
-    },
-    freetime: {
-      label: "Free Time",
-      images: [
-        { src:"images/freetime-1.jpg", alt:"Placeholder photo: the group on a weekend outing", caption:"Weekend adventures", blurb:"Lorem ipsum dolor sit amet, consectetur." },
-        { src:"images/freetime-2.jpg", alt:"Placeholder photo: trying a local German dish", caption:"Trying local food", blurb:"Sed do eiusmod tempor incididunt ut labore." },
-        { src:"images/freetime-3.jpg", alt:"Placeholder photo: an evening get-together with the group", caption:"Evenings with the group", blurb:"Ut enim ad minim veniam, quis nostrud." },
-        { src:"images/freetime-4.jpg", alt:"Placeholder photo: a walk through the countryside", caption:"Exploring the countryside", blurb:"Duis aute irure dolor in reprehenderit." },
-        { src:"images/freetime-5.jpg", alt:"Placeholder photo: the group on their final evening", caption:"Last night in Germany", blurb:"Excepteur sint occaecat cupidatat non proident." }
-      ]
+    sk: {
+      ui: {
+        brandMain:"Erasmus", brandSub:"Schkeuditz · Vitalis",
+        nav:{ home:"Domov", practice:"Prax", week1:"1. týždeň", week2:"2. týždeň", culture:"Kultúra", leipzig:"Lipsko", dresden:"Drážďany", freetime:"Voľný čas" },
+        galleryLabel:{ home:"Erasmus, Schkeuditz", week1:"Prax, 1. týždeň", week2:"Prax, 2. týždeň", leipzig:"Kultúra, Lipsko", dresden:"Kultúra, Drážďany", freetime:"Voľný čas" },
+        footer:"Vytvoril ___",
+        emptyTitle:"Zatiaľ tu nič nie je", emptyBody:"V galérii {gallery} zatiaľ nie sú žiadne fotky.",
+        placeholderNote:"{caption} — fotka čoskoro pribudne",
+        prevLabel:"Predchádzajúca fotka", nextLabel:"Nasledujúca fotka"
+      },
+      captions: {
+        "home-1":{ caption:"Príchod do Nemecka", blurb:"Lorem ipsum dolor sit amet, consectetur.", alt:"Zástupná fotka: skupina na letisku pred odletom" },
+        "home-2":{ caption:"Prvý pohľad na Schkeuditz", blurb:"Sed do eiusmod tempor incididunt ut labore.", alt:"Zástupná fotka: prvý pohľad na ulicu v Schkeuditzi" },
+        "home-3":{ caption:"Spoznávame tím", blurb:"Ut enim ad minim veniam, quis nostrud.", alt:"Zástupná fotka: stretnutie s tímom hostiteľskej firmy" },
+        "home-4":{ caption:"Zabývame sa v byte", blurb:"Duis aute irure dolor in reprehenderit.", alt:"Zástupná fotka: vybaľovanie v byte" },
+        "home-5":{ caption:"Pripravení na dva týždne", blurb:"Excepteur sint occaecat cupidatat non proident.", alt:"Zástupná fotka: skupina pred prvým pracovným dňom" },
+        "week1-1":{ caption:"Náš prvý deň vo firme", blurb:"Lorem ipsum dolor sit amet, consectetur.", alt:"Zástupná fotka: príchod do kancelárie v prvý deň" },
+        "week1-2":{ caption:"Prehliadka kancelárie a zoznámenie", blurb:"Sed do eiusmod tempor incididunt ut labore.", alt:"Zástupná fotka: prehliadka kancelárie s kolegom" },
+        "week1-3":{ caption:"Prvé riadky kódu v práci", blurb:"Ut enim ad minim veniam, quis nostrud.", alt:"Zástupná fotka: písanie prvých riadkov kódu" },
+        "week1-4":{ caption:"Obedná prestávka s kolegami", blurb:"Duis aute irure dolor in reprehenderit.", alt:"Zástupná fotka: obedový stôl s tímom" },
+        "week1-5":{ caption:"Koniec prvého týždňa", blurb:"Excepteur sint occaecat cupidatat non proident.", alt:"Zástupná fotka: odchod z kancelárie v piatok" },
+        "week2-1":{ caption:"Späť do práce, druhý týždeň", blurb:"Lorem ipsum dolor sit amet, consectetur.", alt:"Zástupná fotka: späť za stolom v pondelok" },
+        "week2-2":{ caption:"Prezentujeme náš projekt", blurb:"Sed do eiusmod tempor incididunt ut labore.", alt:"Zástupná fotka: prezentácia projektu pred tímom" },
+        "week2-3":{ caption:"Spoločné ladenie chýb", blurb:"Ut enim ad minim veniam, quis nostrud.", alt:"Zástupná fotka: dvaja ľudia pri ladení chýb na obrazovke" },
+        "week2-4":{ caption:"Odovzdávanie certifikátov", blurb:"Duis aute irure dolor in reprehenderit.", alt:"Zástupná fotka: odovzdávanie osvedčenia o absolvovaní" },
+        "week2-5":{ caption:"Lúčenie s kanceláriou", blurb:"Excepteur sint occaecat cupidatat non proident.", alt:"Zástupná fotka: posledné lúčenie v kancelárii" },
+        "leipzig-1":{ caption:"Spoznávame Lipsko", blurb:"Lorem ipsum dolor sit amet, consectetur.", alt:"Zástupná fotka: prechádzka centrom Lipska" },
+        "leipzig-2":{ caption:"Augustusplatz popoludní", blurb:"Sed do eiusmod tempor incididunt ut labore.", alt:"Zástupná fotka: námestie Augustusplatz popoludní" },
+        "leipzig-3":{ caption:"Staré mesto v Lipsku", blurb:"Ut enim ad minim veniam, quis nostrud.", alt:"Zástupná fotka: úzke uličky lipského starého mesta" },
+        "leipzig-4":{ caption:"Prestávka na kávu v meste", blurb:"Duis aute irure dolor in reprehenderit.", alt:"Zástupná fotka: káva v lipskej kaviarni" },
+        "leipzig-5":{ caption:"Pouliční hudobníci v centre", blurb:"Excepteur sint occaecat cupidatat non proident.", alt:"Zástupná fotka: pouliční hudobníci v centre mesta" },
+        "dresden-1":{ caption:"Jednodňový výlet do Drážďan", blurb:"Lorem ipsum dolor sit amet, consectetur.", alt:"Zástupná fotka: príchod do Drážďan na jednodňový výlet" },
+        "dresden-2":{ caption:"Frauenkirche (Kostol Panny Márie)", blurb:"Sed do eiusmod tempor incididunt ut labore.", alt:"Zástupná fotka: kupola Frauenkirche" },
+        "dresden-3":{ caption:"Popri rieke Labe", blurb:"Ut enim ad minim veniam, quis nostrud.", alt:"Zástupná fotka: prechádzka popri rieke Labe" },
+        "dresden-4":{ caption:"Drážďanský starý trh", blurb:"Duis aute irure dolor in reprehenderit.", alt:"Zástupná fotka: stánky na drážďanskom starom trhu" },
+        "dresden-5":{ caption:"Zlatá hodinka nad mestom", blurb:"Excepteur sint occaecat cupidatat non proident.", alt:"Zástupná fotka: západ slnka nad siluetou starého mesta" },
+        "freetime-1":{ caption:"Víkendové dobrodružstvá", blurb:"Lorem ipsum dolor sit amet, consectetur.", alt:"Zástupná fotka: skupina na víkendovom výlete" },
+        "freetime-2":{ caption:"Ochutnávame miestne jedlo", blurb:"Sed do eiusmod tempor incididunt ut labore.", alt:"Zástupná fotka: ochutnávka nemeckého jedla" },
+        "freetime-3":{ caption:"Večery so skupinou", blurb:"Ut enim ad minim veniam, quis nostrud.", alt:"Zástupná fotka: večerné stretnutie so skupinou" },
+        "freetime-4":{ caption:"Spoznávame okolitú krajinu", blurb:"Duis aute irure dolor in reprehenderit.", alt:"Zástupná fotka: prechádzka okolitou krajinou" },
+        "freetime-5":{ caption:"Posledná noc v Nemecku", blurb:"Excepteur sint occaecat cupidatat non proident.", alt:"Zástupná fotka: skupina počas posledného večera" }
+      }
     }
   };
+  /* ===== I18N:END ===== */
+
+  /* Order shown in the language switcher — add a code here (plus a
+     block above with the same shape) to support a new language. */
+  const LANGUAGES = ["en","de","sk"];
+  const LANG_LABELS = { en:"EN", de:"DE", sk:"SK" };
 
   /* Which top-level dropdown a gallery belongs to (for nav highlighting) */
   const PARENT_OF = { week1:"practice", week2:"practice", leipzig:"culture", dresden:"culture" };
 
   /* ---------------------------------------------------------- */
 
-  const state = { gallery:"home", index:0 };
+  function detectLanguage(){
+    try {
+      const saved = localStorage.getItem("erasmus-lang");
+      if (saved && LANGUAGES.indexOf(saved) !== -1) return saved;
+    } catch(e){ /* localStorage unavailable — fall through */ }
+    const nav = (navigator.language || "en").slice(0,2).toLowerCase();
+    return LANGUAGES.indexOf(nav) !== -1 ? nav : "en";
+  }
+
+  const state = { gallery:"home", index:0, lang:detectLanguage() };
 
   const els = {
     image: document.getElementById("galleryImage"),
@@ -508,11 +638,33 @@
     counter: document.getElementById("galleryCounter"),
     prevBtn: document.getElementById("prevBtn"),
     nextBtn: document.getElementById("nextBtn"),
+    langSwitch: document.getElementById("langSwitch"),
     navLinks: Array.prototype.slice.call(document.querySelectorAll(".menu-link[data-gallery]")),
     dropdownLinks: Array.prototype.slice.call(document.querySelectorAll(".dropdown-link[data-gallery]")),
     dropdownToggles: Array.prototype.slice.call(document.querySelectorAll(".dropdown-toggle")),
-    dropdownParents: Array.prototype.slice.call(document.querySelectorAll(".has-dropdown"))
+    dropdownParents: Array.prototype.slice.call(document.querySelectorAll(".has-dropdown")),
+    i18nText: Array.prototype.slice.call(document.querySelectorAll("[data-i18n]")),
+    i18nAria: Array.prototype.slice.call(document.querySelectorAll("[data-i18n-aria]"))
   };
+
+  function dict(){ return I18N[state.lang] || I18N.en; }
+
+  function getPath(obj, path){
+    return path.split(".").reduce(function(o,k){ return (o && o[k] !== undefined) ? o[k] : undefined; }, obj);
+  }
+
+  function applyTranslations(){
+    document.documentElement.lang = state.lang;
+    const ui = dict().ui;
+    els.i18nText.forEach(function(el){
+      const val = getPath(ui, el.dataset.i18n);
+      if (val !== undefined) el.textContent = val;
+    });
+    els.i18nAria.forEach(function(el){
+      const val = getPath(ui, el.dataset.i18nAria);
+      if (val !== undefined) el.setAttribute("aria-label", val);
+    });
+  }
 
   /* Missing-image fallback: hide the <img> so the placeholder behind it shows */
   els.image.addEventListener("error", function(){
@@ -522,19 +674,34 @@
     if (els.image.getAttribute("src")) els.image.classList.remove("is-hidden");
   });
 
-  function render(){
-    const gallery = GALLERY_DATA[state.gallery];
-    const total = gallery.images.length;
-
-    /* Galleries are no longer fixed at 5 — guard the 0-image case
-       (e.g. a brand-new gallery before its first upload) instead of
-       indexing into an empty array. */
-    if (total === 0){
+  function showImage(media, altText, note){
+    els.placeholderText.textContent = note;
+    if (media && media.src){
       els.image.classList.add("is-hidden");
+      requestAnimationFrame(function(){
+        els.image.alt = altText;
+        els.image.src = media.src;
+      });
+    } else {
       els.image.removeAttribute("src");
-      els.placeholderText.textContent = "No photos in " + gallery.label + " yet.";
-      els.kicker.textContent = gallery.label;
-      els.caption.textContent = "Nothing here yet";
+      els.image.alt = altText;
+      els.image.classList.add("is-hidden");
+    }
+  }
+
+  function render(){
+    const ui = dict().ui;
+    const captions = dict().captions;
+    const ids = GALLERY_STRUCTURE[state.gallery];
+    const total = ids.length;
+    const label = ui.galleryLabel[state.gallery];
+
+    if (total === 0){
+      els.image.removeAttribute("src");
+      els.image.classList.add("is-hidden");
+      els.placeholderText.textContent = ui.emptyBody.replace("{gallery}", label);
+      els.kicker.textContent = label;
+      els.caption.textContent = ui.emptyTitle;
       els.blurb.textContent = "";
       els.counter.textContent = "0 / 0";
       els.prevBtn.disabled = true;
@@ -545,18 +712,14 @@
     els.prevBtn.disabled = false;
     els.nextBtn.disabled = false;
 
-    const item = gallery.images[state.index];
+    const id = ids[state.index];
+    const media = IMAGES[id] || { src:"" };
+    const text = captions[id] || { caption:id, blurb:"", alt:id };
 
-    els.image.classList.add("is-hidden"); /* fade out briefly */
-    requestAnimationFrame(function(){
-      els.image.src = item.src;
-      els.image.alt = item.alt;
-    });
-
-    els.placeholderText.textContent = item.caption + " — add " + item.src;
-    els.kicker.textContent = gallery.label;
-    els.caption.textContent = item.caption;
-    els.blurb.textContent = item.blurb;
+    showImage(media, text.alt, ui.placeholderNote.replace("{caption}", text.caption));
+    els.kicker.textContent = label;
+    els.caption.textContent = text.caption;
+    els.blurb.textContent = text.blurb;
     els.counter.textContent = (state.index + 1) + " / " + total;
 
     updateNavHighlight();
@@ -579,7 +742,7 @@
   }
 
   function showGallery(key){
-    if (!GALLERY_DATA[key]) return;
+    if (!GALLERY_STRUCTURE[key]) return;
     state.gallery = key;
     state.index = 0;
     closeAllDropdowns();
@@ -587,10 +750,38 @@
   }
 
   function stepImage(delta){
-    const total = GALLERY_DATA[state.gallery].images.length;
+    const total = GALLERY_STRUCTURE[state.gallery].length;
     if (total === 0) return;
     state.index = (state.index + delta + total) % total;
     render();
+  }
+
+  function setLanguage(lang){
+    if (LANGUAGES.indexOf(lang) === -1) return;
+    state.lang = lang;
+    try { localStorage.setItem("erasmus-lang", lang); } catch(e){ /* ignore */ }
+    applyTranslations();
+    highlightLangButtons();
+    render();
+  }
+
+  function highlightLangButtons(){
+    Array.prototype.slice.call(els.langSwitch.children).forEach(function(btn){
+      btn.setAttribute("aria-current", String(btn.dataset.lang === state.lang));
+    });
+  }
+
+  function buildLangSwitch(){
+    LANGUAGES.forEach(function(code){
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "lang-btn";
+      btn.dataset.lang = code;
+      btn.textContent = LANG_LABELS[code] || code.toUpperCase();
+      btn.addEventListener("click", function(){ setLanguage(code); });
+      els.langSwitch.appendChild(btn);
+    });
+    highlightLangButtons();
   }
 
   /* --- nav wiring --- */
@@ -634,6 +825,8 @@
   els.nextBtn.addEventListener("click", function(){ stepImage(1); });
 
   /* --- init --- */
+  buildLangSwitch();
+  applyTranslations();
   render();
 })();
 </script>
