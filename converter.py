@@ -34,7 +34,7 @@ from pathlib import Path
 from PIL import Image, ImageOps
 
 MAX_DIMENSION = 1600   # long edge in px — the main lever on base64 weight
-JPEG_QUALITY = 78      # 70-85 is a reasonable range; lower = smaller file
+JPEG_QUALITY = 70      # 70-85 is a reasonable range; lower = smaller file
 START_MARKER = "/* ===== IMAGES:START ===== */"
 END_MARKER = "/* ===== IMAGES:END ===== */"
 

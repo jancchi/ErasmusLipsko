@@ -189,9 +189,9 @@
     width:fit-content;
     max-width:100%;           /* real size cap lives on .img-el below */
     background:var(--c-white);
-    padding:12px 12px 0;
     border-radius:8px;
     box-shadow:0 22px 55px rgba(0,0,0,.4);
+    perspective:1600px;       /* 3D context for the postcard flip (see POSTCARD below) */
   }
 
   /* little postage-stamp accent — purely decorative */
@@ -274,10 +274,188 @@
     .caption-blurb{ display:none; }
   }
   @media (max-width:420px){
-    .image-frame{ padding:8px 8px 0; }
+    /* the front face's tighter mobile matting lives with the rest of
+       the postcard rules below — it has to come after .postcard-front's
+       base padding in source order to win */
     .arrow{ width:32px; height:32px; font-size:1.1rem; }
     .viewer{ gap:6px; }
     .stamp{ width:28px; height:34px; top:-8px; right:-8px; }
+  }
+
+  /* ============================================================
+     POSTCARD — the whole card turns over. Front is the photo side
+     (stamp, image, caption); back is a real divided-back postcard:
+     handwritten message on the left, stamp + postmark + address
+     lines on the right.
+
+     The 3D chain is .image-frame (perspective) > .postcard
+     (preserve-3d) > two .postcard-face children. Two things here
+     are load-bearing:
+
+     1. Don't put overflow (or filter/clip-path) on .postcard — a
+        non-visible overflow on the same element that carries
+        transform-style:preserve-3d flattens the 3D context and the
+        flip degrades to a flat fade. Overflow on an ANCESTOR
+        (.page) is fine.
+     2. Sizing still comes from the <img> (see .img-el). The FRONT
+        face sits in normal flow and drives the card's box; the BACK
+        face is absolutely positioned to match it — the same trick
+        .placeholder-fill already uses. Don't give .postcard or the
+        faces their own width/aspect-ratio, or you reintroduce the
+        overflow bug that .img-el's sizing exists to avoid.
+     ============================================================ */
+  .postcard{
+    position:relative;
+    transform-style:preserve-3d;
+    transition:transform .65s cubic-bezier(.2,.75,.2,1);
+    cursor:pointer;
+  }
+  .image-frame.is-flipped .postcard{ transform:rotateY(180deg); }
+
+  .postcard-face{
+    background:var(--c-white);
+    border-radius:8px;
+    -webkit-backface-visibility:hidden;
+            backface-visibility:hidden;
+  }
+  .postcard-front{
+    margin:0;                 /* <figure> default margin */
+    padding:12px 12px 0;      /* the matting that used to live on .image-frame */
+  }
+  .postcard-back{
+    position:absolute; inset:0;
+    transform:rotateY(180deg);
+    display:flex;
+    gap:clamp(8px,1.6vw,18px);
+    padding:clamp(12px,2.2vh,20px) clamp(12px,2vw,20px);
+    overflow:hidden;          /* the no-scroll rule applies in here too */
+    text-align:left;
+  }
+
+  /* --- left half: the message, in ballpoint --- */
+  .pc-message{
+    flex:1 1 58%; min-width:0;
+    display:flex; flex-direction:column;
+    /* EDIT: handwriting stack — falls back to the display serif */
+    font-family:"Segoe Script","Bradley Hand","Comic Sans MS",var(--font-display);
+    color:#3A3A6B;            /* ballpoint blue-black */
+  }
+  .pc-greeting{
+    font-size:clamp(.8rem,1.5vw,1rem); font-weight:700;
+    margin-bottom:.4em;
+  }
+  .pc-note{
+    margin:0;
+    font-size:clamp(.72rem,1.35vw,.9rem); line-height:1.5;
+  }
+  .pc-sign{
+    margin-top:auto; align-self:flex-end;
+    font-size:clamp(.75rem,1.4vw,.95rem);
+  }
+
+  /* the printed divider down the middle of a real postcard back */
+  .pc-split{
+    flex:0 0 1px;
+    background:repeating-linear-gradient(180deg,
+      var(--c-stone) 0 6px, transparent 6px 12px);
+    opacity:.55;
+  }
+
+  /* --- right half: stamp, postmark, address --- */
+  .pc-address{
+    flex:1 1 42%; min-width:0;
+    display:flex; flex-direction:column;
+    gap:clamp(6px,1.4vh,12px);
+  }
+  .pc-stamp-zone{
+    position:relative; align-self:flex-end;
+    width:clamp(42px,7vw,56px);
+  }
+  .pc-stamp{
+    width:100%; aspect-ratio:3/4;
+    border:2px dashed var(--c-gold); border-radius:2px;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:3px;
+    color:var(--c-red);
+  }
+  .pc-stamp svg{ width:42%; stroke:currentColor; fill:none; stroke-width:1.6; }
+  .pc-stamp-value{ font-size:.5rem; font-weight:700; letter-spacing:.02em; }
+
+  /* cancellation mark, overlapping the stamp the way a real one does */
+  .pc-postmark{
+    position:absolute; left:-44%; top:16%;
+    width:clamp(46px,7.6vw,62px); aspect-ratio:1;
+    border:2px solid var(--c-red); border-radius:50%;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:1px;
+    color:var(--c-red); opacity:.6;
+    transform:rotate(-9deg);
+    text-align:center; line-height:1.1;
+  }
+  .pc-postmark::before,
+  .pc-postmark::after{
+    content:""; position:absolute; left:9%; right:9%;
+    border-top:1px solid currentColor;
+  }
+  .pc-postmark::before{ top:21%; }
+  .pc-postmark::after{ bottom:21%; }
+  .pc-mark-place{
+    font-size:.42rem; font-weight:700;
+    letter-spacing:.06em; text-transform:uppercase;
+    max-width:90%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .pc-mark-date{ font-size:.42rem; font-weight:700; }
+
+  .pc-lines{
+    display:flex; flex-direction:column;
+    gap:clamp(5px,1.2vh,10px);
+    margin-top:auto;
+  }
+  .pc-to{
+    font-size:.56rem; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--c-stone);
+  }
+  .pc-line{
+    min-height:1.15em;
+    border-bottom:1px solid rgba(140,133,119,.45);
+    font-family:"Segoe Script","Bradley Hand","Comic Sans MS",var(--font-display);
+    font-size:clamp(.7rem,1.3vw,.85rem);
+    color:#3A3A6B;
+  }
+
+  /* flip control — deliberately OUTSIDE .postcard so it never rotates */
+  .flip-btn{
+    position:absolute; z-index:3;
+    right:8px; bottom:8px;
+    width:28px; height:28px;
+    border-radius:50%;
+    border:1px solid rgba(169,51,59,.3);
+    background:rgba(247,241,230,.88);
+    color:var(--c-red);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    transition:background .15s ease, color .15s ease, transform .2s ease;
+  }
+  .flip-btn svg{ width:15px; height:15px; }
+  .flip-btn:hover, .flip-btn:focus-visible{
+    background:var(--c-red); color:var(--c-white); transform:rotate(-40deg);
+  }
+  .flip-btn:disabled{ opacity:.3; cursor:default; pointer-events:none; }
+
+  /* Short viewports: drop the address block, same call as hiding
+     .caption-blurb above — protecting the no-scroll rule. */
+  @media (max-height:560px){
+    .pc-lines{ display:none; }
+    .pc-note{ font-size:.68rem; line-height:1.4; }
+    .pc-greeting{ font-size:.78rem; }
+  }
+  @media (max-width:420px){
+    .postcard-front{ padding:8px 8px 0; }
+    .postcard-back{ padding:10px 12px; gap:8px; }
+    .pc-address{ flex-basis:34%; }
+    .pc-note{ font-size:.68rem; line-height:1.42; }
+    .flip-btn{ width:25px; height:25px; right:6px; bottom:6px; }
+    .flip-btn svg{ width:13px; height:13px; }
   }
 
   /* ============================================================
@@ -390,31 +568,82 @@
     <div class="viewer">
       <button type="button" class="arrow arrow-prev" id="prevBtn" data-i18n-aria="prevLabel" aria-label="Previous photo">&#8249;</button>
 
-      <figure class="image-frame" id="imageFrame">
-        <div class="stamp" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><path d="M3 6l9 6 9-6"/><rect x="3" y="5" width="18" height="14" rx="1.5"/></svg>
-          <span>DE</span>
-        </div>
+      <!-- The card: .image-frame holds the perspective, .postcard holds
+           the two faces. The <figure> is the FRONT face so that
+           <figcaption> stays a direct child of <figure> (and so the
+           front face, in normal flow, keeps driving the card's size). -->
+      <div class="image-frame" id="imageFrame">
+        <div class="postcard" id="postcard">
 
-        <div class="img-wrap">
-          <div class="placeholder-fill" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/>
-              <circle cx="12" cy="13" r="3.5"/>
-            </svg>
-            <span class="ph-text" id="placeholderText"></span>
+          <figure class="postcard-face postcard-front" id="postcardFront">
+            <div class="stamp" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M3 6l9 6 9-6"/><rect x="3" y="5" width="18" height="14" rx="1.5"/></svg>
+              <span>DE</span>
+            </div>
+
+            <div class="img-wrap">
+              <div class="placeholder-fill" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/>
+                  <circle cx="12" cy="13" r="3.5"/>
+                </svg>
+                <span class="ph-text" id="placeholderText"></span>
+              </div>
+              <!-- src is populated from IMAGES (see <script>) — never edited directly here -->
+              <img class="img-el" id="galleryImage" src="" alt="" />
+            </div>
+
+            <figcaption>
+              <span class="kicker" id="galleryKicker"></span>
+              <span class="caption-main" id="galleryCaption"></span>
+              <span class="caption-blurb" id="galleryBlurb"></span>
+              <span class="counter" id="galleryCounter"></span>
+            </figcaption>
+          </figure>
+
+          <!-- BACK face. Message text comes from I18N captions[id].note
+               (falling back to .blurb); place/date come from POSTMARK_PLACE
+               and PHOTO_META. All of it is filled in render(). -->
+          <div class="postcard-face postcard-back" id="postcardBack" aria-hidden="true">
+            <div class="pc-message">
+              <span class="pc-greeting" id="pcGreeting"></span>
+              <p class="pc-note" id="pcNote"></p>
+              <span class="pc-sign" id="pcSign"></span>
+            </div>
+
+            <div class="pc-split" aria-hidden="true"></div>
+
+            <div class="pc-address">
+              <div class="pc-stamp-zone" aria-hidden="true">
+                <div class="pc-stamp">
+                  <svg viewBox="0 0 24 24"><path d="M3 6l9 6 9-6"/><rect x="3" y="5" width="18" height="14" rx="1.5"/></svg>
+                  <span class="pc-stamp-value">0,95 &euro;</span>
+                </div>
+                <div class="pc-postmark">
+                  <span class="pc-mark-place" id="pcMarkPlace"></span>
+                  <span class="pc-mark-date" id="pcMarkDate"></span>
+                </div>
+              </div>
+              <div class="pc-lines">
+                <span class="pc-to" data-i18n="postcard.to">To</span>
+                <span class="pc-line"></span>
+                <span class="pc-line"></span>
+                <span class="pc-line pc-country" id="pcCountry"></span>
+              </div>
+            </div>
           </div>
-          <!-- src is populated from IMAGES (see <script>) — never edited directly here -->
-          <img class="img-el" id="galleryImage" src="" alt="" />
+
         </div>
 
-        <figcaption>
-          <span class="kicker" id="galleryKicker"></span>
-          <span class="caption-main" id="galleryCaption"></span>
-          <span class="caption-blurb" id="galleryBlurb"></span>
-          <span class="counter" id="galleryCounter"></span>
-        </figcaption>
-      </figure>
+        <button type="button" class="flip-btn" id="flipBtn" aria-pressed="false" aria-label="Turn the postcard over">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+            <path d="M3.5 12a8.5 8.5 0 0 1 14.6-5.9"/>
+            <path d="M20.5 12a8.5 8.5 0 0 1-14.6 5.9"/>
+            <path d="M18.2 2.7v3.6h-3.6"/>
+            <path d="M5.8 21.3v-3.6h3.6"/>
+          </svg>
+        </button>
+      </div>
 
       <button type="button" class="arrow arrow-next" id="nextBtn" data-i18n-aria="nextLabel" aria-label="Next photo">&#8250;</button>
     </div>
@@ -449,6 +678,43 @@
   };
 
   /* ============================================================
+     POSTMARK — the cancellation mark on the back of each postcard.
+     Language-independent (a postmark shows the local place name, so
+     it is deliberately NOT translated).
+
+     This is its own structure and not a field on IMAGES on purpose:
+     converter.py rewrites IMAGES entries with a regex that expects
+     each entry to contain nothing but "src", so any extra per-photo
+     data has to live outside that block.
+
+     POSTMARK_PLACE is the default per gallery; PHOTO_META overrides
+     it for single photos and holds the date. "date" is ISO
+     (YYYY-MM-DD) and may stay "" — an empty date simply leaves the
+     date line off the postmark, so these can be filled in as the
+     stay goes on.
+     ============================================================ */
+  const POSTMARK_PLACE = {
+    home:"Schkeuditz", week1:"Schkeuditz", week2:"Schkeuditz",
+    leipzig:"Leipzig", dresden:"Dresden", freetime:"Schkeuditz"
+  };
+  const PHOTO_META = {
+    "home-1": { place:"Dresden", date:"" },
+    "home-2": { date:"" },
+    "home-3": { date:"" },
+    "home-4": { place:"Bratislava", date:"" },
+    "home-5": { place:"Dresden", date:"" },
+    "week1-1": { date:"" },
+    "week1-2": { date:"" },
+    "week1-3": { date:"" },
+    "week1-4": { date:"" },
+    "week1-5": { date:"" },
+    "week2-1": { date:"" }, "week2-2": { date:"" }, "week2-3": { date:"" }, "week2-4": { date:"" }, "week2-5": { date:"" },
+    "leipzig-1": { date:"" }, "leipzig-2": { date:"" }, "leipzig-3": { date:"" }, "leipzig-4": { date:"" }, "leipzig-5": { date:"" },
+    "dresden-1": { date:"" }, "dresden-2": { date:"" }, "dresden-3": { date:"" }, "dresden-4": { date:"" }, "dresden-5": { date:"" },
+    "freetime-1": { date:"" }, "freetime-2": { date:"" }, "freetime-3": { date:"" }, "freetime-4": { date:"" }, "freetime-5": { date:"" }
+  };
+
+  /* ============================================================
      IMAGES — one entry per photo id, language-independent (a
      photo isn't translated). "src" is "" until a real photo is
      embedded; the viewer shows the postcard placeholder for any
@@ -469,10 +735,14 @@
 
   /* ============================================================
      I18N — every user-facing string, per language. "captions"
-     is keyed by photo id (caption/blurb/alt). "blurb" is filler
-     Lorem Ipsum on purpose and stays identical across languages —
-     it's not real content. To add a language: add one block below
-     with the same shape, then add its code to LANGUAGES.
+     is keyed by photo id (caption/blurb/alt/note). "blurb" is the
+     one-liner under the photo on the FRONT of the card; "note" is
+     the longer handwritten message on the BACK, and is optional —
+     a slot without one falls back to its blurb. Where a slot has
+     no real caption yet, "blurb" is filler Lorem Ipsum on purpose
+     and stays identical across languages (it's not real content),
+     and "note" is simply absent. To add a language: add one block
+     below with the same shape, then add its code to LANGUAGES.
      ============================================================ */
   /* ===== I18N:START ===== */
   const I18N = {
@@ -484,18 +754,23 @@
         footer:"Made by ___",
         emptyTitle:"Nothing here yet", emptyBody:"No photos in {gallery} yet.",
         placeholderNote:"{caption} — photo coming soon",
-        prevLabel:"Previous photo", nextLabel:"Next photo"
+        prevLabel:"Previous photo", nextLabel:"Next photo",
+        postcard:{
+          greeting:"Greetings from {place}", sign:"— Jano",
+          to:"To", country:"Slovakia",
+          turn:"Turn the postcard over", turnBack:"Turn the postcard back"
+        }
       },
       captions: {
-        "home-1":{ caption:"Hi, I'm Jano", blurb:"I work at Asseco CEIT, and when I'm not coding I'm probably playing Factorio.", alt:"Portrait of Jano in front of Dresden's Hauptbahnhof on a rainy day" },
-        "home-2":{ caption:"I also play guitar", blurb:"A bit of music to balance out the screen time.", alt:"Jano playing guitar" },
-        "home-3":{ caption:"On the Erasmus+ programme", blurb:"Two weeks in Germany, made possible by Erasmus+.", alt:"Erasmus+ programme graphic on a European Union flag background" },
-        "home-4":{ caption:"Where it all began — Bratislava", blurb:"Departures board at the main station, minutes before setting off.", alt:"Departures board at Bratislava's main train station" },
-        "home-5":{ caption:"The whole group in Dresden", blurb:"Suitcases, backpacks, and everyone finally in one place.", alt:"Group photo of the Erasmus group with luggage at Dresden's train station" },
-        "week1-1":{ caption:"Learning HTML", blurb:"Head down at the keyboard, figuring out the basics.", alt:"Jano seen from behind, typing at a desktop computer in the office" },
-        "week1-2":{ caption:"Installing Windows on a Mac", blurb:"Not every machine in the office is what it looks like.", alt:"A Samsung monitor showing a Windows installation screen next to a Mac mini" },
-        "week1-3":{ caption:"Wiring up the power outlets", blurb:"Three of us, one wall full of holes, and a screwdriver.", alt:"Three friends posing next to a wall with electrical outlets and open conduit holes" },
-        "week1-4":{ caption:"Safety first", blurb:"(No humans were harmed.)", alt:"Close-up of hands wiring an electrical outlet with two screwdrivers" },
+        "home-1":{ caption:"Hi, I'm Jano", blurb:"I work at Asseco CEIT, and when I'm not coding I'm probably playing Factorio.", alt:"Portrait of Jano in front of Dresden's Hauptbahnhof on a rainy day", note:"Day one, Dresden, and it rained the entire time. I came here to write code — nobody warned me how much of the next two weeks would involve screwdrivers." },
+        "home-2":{ caption:"I also play guitar", blurb:"A bit of music to balance out the screen time.", alt:"Jano playing guitar", note:"There's a guitar at home that gets picked up whenever the screen has won for the day. It didn't fit in the suitcase — the only thing I regret about packing." },
+        "home-3":{ caption:"On the Erasmus+ programme", blurb:"Two weeks in Germany, made possible by Erasmus+.", alt:"Erasmus+ programme graphic on a European Union flag background", note:"None of this happens without Erasmus+: two weeks of practice in Germany, paid for by a programme I mostly knew as a logo on a poster in the corridor. Turns out the poster meant it." },
+        "home-4":{ caption:"Where it all began — Bratislava", blurb:"Departures board at the main station, minutes before setting off.", alt:"Departures board at Bratislava's main train station", note:"The last photo I took at home: the departures board in Bratislava, minutes before we left. Everyone else was counting luggage; I was counting how many platforms I could still get wrong." },
+        "home-5":{ caption:"The whole group in Dresden", blurb:"Suitcases, backpacks, and everyone finally in one place.", alt:"Group photo of the Erasmus group with luggage at Dresden's train station", note:"The whole group, finally in one place, with more luggage than people. Somewhere in that pile is the bag I then spent an hour looking for." },
+        "week1-1":{ caption:"Learning HTML", blurb:"Head down at the keyboard, figuring out the basics.", alt:"Jano seen from behind, typing at a desktop computer in the office", note:"First morning at Projekt Korrekt: HTML from the ground up. I've written plenty of code before, but never had to explain to anyone why a div sits exactly where it sits." },
+        "week1-2":{ caption:"Installing Windows on a Mac", blurb:"Not every machine in the office is what it looks like.", alt:"A Samsung monitor showing a Windows installation screen next to a Mac mini", note:"A Mac mini, a Samsung monitor and a Windows installer, all insisting they belong together. Nothing in this workshop is quite what it looks like, the computers included." },
+        "week1-3":{ caption:"Wiring up the power outlets", blurb:"Three of us, one wall full of holes, and a screwdriver.", alt:"Three friends posing next to a wall with electrical outlets and open conduit holes", note:"This is the part of the IT course that isn't in the brochure: three of us, one wall full of holes, and a single screwdriver between us. I came for the keyboard and got the wall." },
+        "week1-4":{ caption:"Safety first", blurb:"(No humans were harmed.)", alt:"Close-up of hands wiring an electrical outlet with two screwdrivers", note:"Two screwdrivers, one outlet, and a photographer with questionable priorities. Everything was switched off at the box, and everyone still has all ten fingers." },
         "week1-5":{ caption:"Wrapping up week one", blurb:"Excepteur sint occaecat cupidatat non proident.", alt:"Placeholder photo: leaving the office on Friday" },
         "week2-1":{ caption:"Back at it, week two", blurb:"Lorem ipsum dolor sit amet, consectetur.", alt:"Placeholder photo: back at the desk on Monday" },
         "week2-2":{ caption:"Presenting our project", blurb:"Sed do eiusmod tempor incididunt ut labore.", alt:"Placeholder photo: presenting the project to the team" },
@@ -527,18 +802,23 @@
         footer:"Erstellt von ___",
         emptyTitle:"Noch nichts hier", emptyBody:"Noch keine Fotos in {gallery}.",
         placeholderNote:"{caption} — Foto folgt",
-        prevLabel:"Vorheriges Foto", nextLabel:"Nächstes Foto"
+        prevLabel:"Vorheriges Foto", nextLabel:"Nächstes Foto",
+        postcard:{
+          greeting:"Viele Grüße aus {place}", sign:"— Jano",
+          to:"An", country:"Slowakei",
+          turn:"Postkarte umdrehen", turnBack:"Postkarte zurückdrehen"
+        }
       },
       captions: {
-        "home-1":{ caption:"Hallo, ich bin Jano", blurb:"Ich arbeite bei Asseco CEIT und wenn ich nicht programmiere, spiele ich wahrscheinlich Factorio.", alt:"Porträt von Jano vor dem Dresdner Hauptbahnhof an einem regnerischen Tag" },
-        "home-2":{ caption:"Ich spiele auch Gitarre", blurb:"Ein bisschen Musik als Ausgleich zur Bildschirmzeit.", alt:"Jano beim Gitarrespielen" },
-        "home-3":{ caption:"Im Rahmen von Erasmus+", blurb:"Zwei Wochen in Deutschland, ermöglicht durch Erasmus+.", alt:"Erasmus+-Grafik vor dem Hintergrund der Europaflagge" },
-        "home-4":{ caption:"Wo alles begann — Bratislava", blurb:"Abfahrtstafel am Hauptbahnhof, kurz vor der Abreise.", alt:"Abfahrtstafel am Hauptbahnhof Bratislava" },
-        "home-5":{ caption:"Die ganze Gruppe in Dresden", blurb:"Koffer, Rucksäcke, und endlich alle an einem Ort.", alt:"Gruppenfoto der Erasmus-Gruppe mit Gepäck im Bahnhof Dresden" },
-        "week1-1":{ caption:"HTML lernen", blurb:"Kopf unten an der Tastatur, die Grundlagen verstehen.", alt:"Jano von hinten gesehen, tippend an einem Bürocomputer" },
-        "week1-2":{ caption:"Windows auf einem Mac installieren", blurb:"Nicht jeder Rechner im Büro ist, was er zu sein scheint.", alt:"Ein Samsung-Monitor mit Windows-Installationsbildschirm neben einem Mac mini" },
-        "week1-3":{ caption:"Steckdosen verkabeln", blurb:"Wir zu dritt, eine Wand voller Löcher, und ein Schraubenzieher.", alt:"Drei Freunde vor einer Wand mit Steckdosen und offenen Leitungslöchern" },
-        "week1-4":{ caption:"Sicherheit geht vor", blurb:"(Es kam niemand zu Schaden.)", alt:"Nahaufnahme von Händen, die mit zwei Schraubenziehern eine Steckdose verkabeln" },
+        "home-1":{ caption:"Hallo, ich bin Jano", blurb:"Ich arbeite bei Asseco CEIT und wenn ich nicht programmiere, spiele ich wahrscheinlich Factorio.", alt:"Porträt von Jano vor dem Dresdner Hauptbahnhof an einem regnerischen Tag", note:"Tag eins, Dresden, und es hat die ganze Zeit geregnet. Ich bin zum Programmieren hergekommen — niemand hat mich gewarnt, wie viel von den nächsten zwei Wochen mit Schraubenziehern zu tun haben würde." },
+        "home-2":{ caption:"Ich spiele auch Gitarre", blurb:"Ein bisschen Musik als Ausgleich zur Bildschirmzeit.", alt:"Jano beim Gitarrespielen", note:"Zu Hause steht eine Gitarre, die immer dann dran ist, wenn der Bildschirm für heute gewonnen hat. In den Koffer hat sie nicht gepasst — das Einzige, was ich beim Packen bereue." },
+        "home-3":{ caption:"Im Rahmen von Erasmus+", blurb:"Zwei Wochen in Deutschland, ermöglicht durch Erasmus+.", alt:"Erasmus+-Grafik vor dem Hintergrund der Europaflagge", note:"Ohne Erasmus+ gäbe es das alles nicht: zwei Wochen Praxis in Deutschland, finanziert von einem Programm, das ich vor allem als Logo auf einem Plakat im Flur kannte. Das Plakat hat es offenbar ernst gemeint." },
+        "home-4":{ caption:"Wo alles begann — Bratislava", blurb:"Abfahrtstafel am Hauptbahnhof, kurz vor der Abreise.", alt:"Abfahrtstafel am Hauptbahnhof Bratislava", note:"Das letzte Foto von daheim: die Abfahrtstafel in Bratislava, Minuten vor der Abreise. Alle anderen zählten Gepäckstücke; ich zählte, wie viele Bahnsteige ich noch verwechseln könnte." },
+        "home-5":{ caption:"Die ganze Gruppe in Dresden", blurb:"Koffer, Rucksäcke, und endlich alle an einem Ort.", alt:"Gruppenfoto der Erasmus-Gruppe mit Gepäck im Bahnhof Dresden", note:"Die ganze Gruppe, endlich an einem Ort, mit mehr Gepäck als Menschen. Irgendwo in diesem Haufen steckt die Tasche, die ich danach eine Stunde gesucht habe." },
+        "week1-1":{ caption:"HTML lernen", blurb:"Kopf unten an der Tastatur, die Grundlagen verstehen.", alt:"Jano von hinten gesehen, tippend an einem Bürocomputer", note:"Erster Morgen bei Projekt Korrekt: HTML von Grund auf. Ich habe schon viel Code geschrieben, musste aber noch nie jemandem erklären, warum ein div genau dort steht, wo es steht." },
+        "week1-2":{ caption:"Windows auf einem Mac installieren", blurb:"Nicht jeder Rechner im Büro ist, was er zu sein scheint.", alt:"Ein Samsung-Monitor mit Windows-Installationsbildschirm neben einem Mac mini", note:"Ein Mac mini, ein Samsung-Monitor und ein Windows-Installer, die alle behaupten, sie gehörten zusammen. Nichts in dieser Werkstatt ist ganz, wie es aussieht — die Rechner eingeschlossen." },
+        "week1-3":{ caption:"Steckdosen verkabeln", blurb:"Wir zu dritt, eine Wand voller Löcher, und ein Schraubenzieher.", alt:"Drei Freunde vor einer Wand mit Steckdosen und offenen Leitungslöchern", note:"Das ist der Teil des IT-Kurses, der in keinem Prospekt steht: wir zu dritt, eine Wand voller Löcher und ein einziger Schraubenzieher. Ich kam für die Tastatur und bekam die Wand." },
+        "week1-4":{ caption:"Sicherheit geht vor", blurb:"(Es kam niemand zu Schaden.)", alt:"Nahaufnahme von Händen, die mit zwei Schraubenziehern eine Steckdose verkabeln", note:"Zwei Schraubenzieher, eine Steckdose und ein Fotograf mit fragwürdigen Prioritäten. Am Kasten war alles abgeschaltet, und alle haben noch zehn Finger." },
         "week1-5":{ caption:"Abschluss der ersten Woche", blurb:"Excepteur sint occaecat cupidatat non proident.", alt:"Platzhalterfoto: Feierabend im Büro am Freitag" },
         "week2-1":{ caption:"Zurück an die Arbeit, Woche zwei", blurb:"Lorem ipsum dolor sit amet, consectetur.", alt:"Platzhalterfoto: zurück am Schreibtisch am Montag" },
         "week2-2":{ caption:"Präsentation unseres Projekts", blurb:"Sed do eiusmod tempor incididunt ut labore.", alt:"Platzhalterfoto: Präsentation des Projekts vor dem Team" },
@@ -570,18 +850,25 @@
         footer:"Vytvoril ___",
         emptyTitle:"Zatiaľ tu nič nie je", emptyBody:"V galérii {gallery} zatiaľ nie sú žiadne fotky.",
         placeholderNote:"{caption} — fotka čoskoro pribudne",
-        prevLabel:"Predchádzajúca fotka", nextLabel:"Nasledujúca fotka"
+        prevLabel:"Predchádzajúca fotka", nextLabel:"Nasledujúca fotka",
+        postcard:{
+          /* "z mesta {place}" keeps German place names undeclined —
+             "Zdravím z Dresden" would be wrong, "z mesta Dresden" isn't. */
+          greeting:"Zdravím z mesta {place}", sign:"— Jano",
+          to:"Komu", country:"Slovensko",
+          turn:"Otočiť pohľadnicu", turnBack:"Otočiť pohľadnicu späť"
+        }
       },
       captions: {
-        "home-1":{ caption:"Ahoj, som Jano", blurb:"Pracujem v Asseco CEIT a keď zrovna neprogramujem, najskôr hrám Factorio.", alt:"Portrét Jana pred Hlavnou stanicou v Drážďanoch v daždivý deň" },
-        "home-2":{ caption:"Hrám aj na gitare", blurb:"Trocha hudby ako protiváha k času pri obrazovke.", alt:"Jano hrá na gitare" },
-        "home-3":{ caption:"V rámci programu Erasmus+", blurb:"Dva týždne v Nemecku vďaka programu Erasmus+.", alt:"Grafika programu Erasmus+ na pozadí vlajky Európskej únie" },
-        "home-4":{ caption:"Kde sa to všetko začalo — Bratislava", blurb:"Tabuľa odchodov na hlavnej stanici, pár minút pred odchodom.", alt:"Tabuľa odchodov na Hlavnej stanici v Bratislave" },
-        "home-5":{ caption:"Celá skupina v Drážďanoch", blurb:"Kufre, batohy a konečne všetci na jednom mieste.", alt:"Skupinová fotka Erasmus skupiny s batožinou na stanici v Drážďanoch" },
-        "week1-1":{ caption:"Učím sa HTML", blurb:"Sklonená hlava nad klávesnicou, spoznávam základy.", alt:"Jano odzadu, píše na počítači v kancelárii" },
-        "week1-2":{ caption:"Inštalujeme Windows na Macu", blurb:"Nie každý počítač v kancelárii je taký, ako vyzerá.", alt:"Monitor Samsung s inštalačnou obrazovkou Windows vedľa Mac mini" },
-        "week1-3":{ caption:"Zapájame elektrické zásuvky", blurb:"My traja, stena plná dier a jeden skrutkovač.", alt:"Traja priatelia pri stene s elektrickými zásuvkami a otvorenými otvormi na káble" },
-        "week1-4":{ caption:"Bezpečnosť na prvom mieste", blurb:"(Nikto neprišiel k úhone.)", alt:"Detailný záber rúk zapájajúcich elektrickú zásuvku dvoma skrutkovačmi" },
+        "home-1":{ caption:"Ahoj, som Jano", blurb:"Pracujem v Asseco CEIT a keď zrovna neprogramujem, najskôr hrám Factorio.", alt:"Portrét Jana pred Hlavnou stanicou v Drážďanoch v daždivý deň", note:"Prvý deň, Drážďany, a pršalo celý čas. Prišiel som sem programovať — nikto ma nevaroval, koľko z najbližších dvoch týždňov budem držať skrutkovač." },
+        "home-2":{ caption:"Hrám aj na gitare", blurb:"Trocha hudby ako protiváha k času pri obrazovke.", alt:"Jano hrá na gitare", note:"Doma mám gitaru, ktorá príde na rad vždy, keď obrazovka na ten deň vyhrala. Do kufra sa mi nezmestila — jediná vec, ktorú pri balení ľutujem." },
+        "home-3":{ caption:"V rámci programu Erasmus+", blurb:"Dva týždne v Nemecku vďaka programu Erasmus+.", alt:"Grafika programu Erasmus+ na pozadí vlajky Európskej únie", note:"Bez Erasmu+ by z toho nebolo nič: dva týždne praxe v Nemecku, zaplatené programom, ktorý som poznal hlavne ako logo na plakáte na chodbe. Ten plakát to zjavne myslel vážne." },
+        "home-4":{ caption:"Kde sa to všetko začalo — Bratislava", blurb:"Tabuľa odchodov na hlavnej stanici, pár minút pred odchodom.", alt:"Tabuľa odchodov na Hlavnej stanici v Bratislave", note:"Posledná fotka doma: tabuľa odchodov v Bratislave, pár minút pred odchodom. Ostatní počítali kufre; ja som počítal, koľko nástupíšť si ešte môžem pomýliť." },
+        "home-5":{ caption:"Celá skupina v Drážďanoch", blurb:"Kufre, batohy a konečne všetci na jednom mieste.", alt:"Skupinová fotka Erasmus skupiny s batožinou na stanici v Drážďanoch", note:"Celá skupina, konečne na jednom mieste, s väčším počtom kufrov ako ľudí. Niekde v tej kope je taška, ktorú som potom hodinu hľadal." },
+        "week1-1":{ caption:"Učím sa HTML", blurb:"Sklonená hlava nad klávesnicou, spoznávam základy.", alt:"Jano odzadu, píše na počítači v kancelárii", note:"Prvé ráno v Projekt Korrekt: HTML od základov. Kódu som napísal dosť, ale ešte nikdy som nikomu nemusel vysvetľovať, prečo je div práve tam, kde je." },
+        "week1-2":{ caption:"Inštalujeme Windows na Macu", blurb:"Nie každý počítač v kancelárii je taký, ako vyzerá.", alt:"Monitor Samsung s inštalačnou obrazovkou Windows vedľa Mac mini", note:"Mac mini, monitor Samsung a inštalátor Windowsu, ktoré všetky tvrdia, že patria k sebe. Nič v tejto dielni nie je celkom to, čím sa zdá — počítače vrátane." },
+        "week1-3":{ caption:"Zapájame elektrické zásuvky", blurb:"My traja, stena plná dier a jeden skrutkovač.", alt:"Traja priatelia pri stene s elektrickými zásuvkami a otvorenými otvormi na káble", note:"Toto je tá časť IT kurzu, ktorá v brožúre nie je: my traja, stena plná dier a jeden jediný skrutkovač. Prišiel som za klávesnicou a dostal som stenu." },
+        "week1-4":{ caption:"Bezpečnosť na prvom mieste", blurb:"(Nikto neprišiel k úhone.)", alt:"Detailný záber rúk zapájajúcich elektrickú zásuvku dvoma skrutkovačmi", note:"Dva skrutkovače, jedna zásuvka a fotograf s pochybnými prioritami. Na skrinke bolo všetko vypnuté a všetci máme ešte desať prstov." },
         "week1-5":{ caption:"Koniec prvého týždňa", blurb:"Excepteur sint occaecat cupidatat non proident.", alt:"Zástupná fotka: odchod z kancelárie v piatok" },
         "week2-1":{ caption:"Späť do práce, druhý týždeň", blurb:"Lorem ipsum dolor sit amet, consectetur.", alt:"Zástupná fotka: späť za stolom v pondelok" },
         "week2-2":{ caption:"Prezentujeme náš projekt", blurb:"Sed do eiusmod tempor incididunt ut labore.", alt:"Zástupná fotka: prezentácia projektu pred tímom" },
@@ -627,9 +914,20 @@
     return LANGUAGES.indexOf(nav) !== -1 ? nav : "en";
   }
 
-  const state = { gallery:"home", index:0, lang:detectLanguage() };
+  const state = { gallery:"home", index:0, lang:detectLanguage(), flipped:false };
 
   const els = {
+    frame: document.getElementById("imageFrame"),
+    postcard: document.getElementById("postcard"),
+    postcardFront: document.getElementById("postcardFront"),
+    postcardBack: document.getElementById("postcardBack"),
+    flipBtn: document.getElementById("flipBtn"),
+    pcGreeting: document.getElementById("pcGreeting"),
+    pcNote: document.getElementById("pcNote"),
+    pcSign: document.getElementById("pcSign"),
+    pcCountry: document.getElementById("pcCountry"),
+    pcMarkPlace: document.getElementById("pcMarkPlace"),
+    pcMarkDate: document.getElementById("pcMarkDate"),
     image: document.getElementById("galleryImage"),
     placeholderText: document.getElementById("placeholderText"),
     kicker: document.getElementById("galleryKicker"),
@@ -689,6 +987,41 @@
     }
   }
 
+  /* ---------- postcard back ---------- */
+
+  function postmarkFor(id){
+    const meta = PHOTO_META[id] || {};
+    return {
+      place: meta.place || POSTMARK_PLACE[state.gallery] || "",
+      date: meta.date || ""
+    };
+  }
+
+  /* ISO (YYYY-MM-DD) -> DD.MM.YYYY, the way a German postmark reads.
+     Anything else — including the "" that unfilled dates carry —
+     comes back empty, and the postmark just shows no date line. */
+  function formatPostmarkDate(iso){
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || "");
+    return m ? m[3] + "." + m[2] + "." + m[1] : "";
+  }
+
+  /* Both faces stay in the DOM, so aria-hidden is what actually keeps
+     a screen reader from reading the hidden side of the card. */
+  function setFlipped(flipped){
+    state.flipped = !!flipped;
+    const pc = dict().ui.postcard;
+    els.frame.classList.toggle("is-flipped", state.flipped);
+    els.postcardFront.setAttribute("aria-hidden", String(state.flipped));
+    els.postcardBack.setAttribute("aria-hidden", String(!state.flipped));
+    els.flipBtn.setAttribute("aria-pressed", String(state.flipped));
+    els.flipBtn.setAttribute("aria-label", state.flipped ? pc.turnBack : pc.turn);
+  }
+
+  function toggleFlip(){
+    if (GALLERY_STRUCTURE[state.gallery].length === 0) return;
+    setFlipped(!state.flipped);
+  }
+
   function render(){
     const ui = dict().ui;
     const captions = dict().captions;
@@ -706,11 +1039,15 @@
       els.counter.textContent = "0 / 0";
       els.prevBtn.disabled = true;
       els.nextBtn.disabled = true;
+      /* nothing to turn over in an empty gallery */
+      setFlipped(false);
+      els.flipBtn.disabled = true;
       updateNavHighlight();
       return;
     }
     els.prevBtn.disabled = false;
     els.nextBtn.disabled = false;
+    els.flipBtn.disabled = false;
 
     const id = ids[state.index];
     const media = IMAGES[id] || { src:"" };
@@ -721,6 +1058,18 @@
     els.caption.textContent = text.caption;
     els.blurb.textContent = text.blurb;
     els.counter.textContent = (state.index + 1) + " / " + total;
+
+    /* --- back of the card --- */
+    const mark = postmarkFor(id);
+    const pc = ui.postcard;
+    els.pcGreeting.textContent = mark.place ? pc.greeting.replace("{place}", mark.place) : "";
+    els.pcNote.textContent = text.note || text.blurb || "";
+    els.pcSign.textContent = pc.sign;
+    els.pcCountry.textContent = pc.country;
+    els.pcMarkPlace.textContent = mark.place;
+    els.pcMarkDate.textContent = formatPostmarkDate(mark.date);
+    /* always land on the photo side when the card changes */
+    setFlipped(false);
 
     updateNavHighlight();
   }
@@ -815,10 +1164,27 @@
 
   document.addEventListener("click", function(){ closeAllDropdowns(); });
   document.addEventListener("keydown", function(e){
-    if (e.key === "Escape") closeAllDropdowns();
+    if (e.key === "Escape"){
+      if (state.flipped) setFlipped(false);
+      closeAllDropdowns();
+    }
     if (e.key === "ArrowLeft") stepImage(-1);
     if (e.key === "ArrowRight") stepImage(1);
+    if (e.key === " " || e.key === "Enter"){
+      /* Buttons (nav, arrows, the flip control itself) keep their own
+         native activation — only a keypress on the bare page turns the
+         card. The page can't scroll anyway, but preventDefault keeps
+         Space from doing anything else surprising. */
+      const t = e.target;
+      if (t && t.closest && t.closest("button")) return;
+      e.preventDefault();
+      toggleFlip();
+    }
   });
+
+  /* --- postcard flip wiring --- */
+  els.postcard.addEventListener("click", toggleFlip);
+  els.flipBtn.addEventListener("click", toggleFlip);
 
   /* --- arrow wiring --- */
   els.prevBtn.addEventListener("click", function(){ stepImage(-1); });
