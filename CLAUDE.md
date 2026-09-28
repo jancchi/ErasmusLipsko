@@ -10,26 +10,30 @@ Built for a school presentation. Deployed as a static file, GitHub → Cloudflar
 
 ## Files
 
-- `index.html` — **the entire website.** Single file: HTML + CSS + vanilla JS. No
-  frameworks, no build step, no external JS/CSS dependencies, no separate files. This is
-  the only file that actually deploys. (Was `erasmus.html`; renamed so Cloudflare Pages
-  serves it as the entry point. `converter.py`'s docstring still says the old name —
-  harmless, `--html` has no default.)
-- `converter.py` — build-time-only helper, run locally, never deployed. Resizes/compresses
-  photos and base64-embeds them into `index.html`'s `IMAGES` block. Requires Pillow
-  (`pip install pillow --break-system-packages`). **Note:** the dev machine currently has
-  only the Microsoft Store Python stub — `python3` and `node` both resolve to nothing, so
-  the converter can't run here until real Python is installed.
-- `manifest.template.json` — template for `converter.py`'s `--manifest` argument.
+- `index.html` — **the whole site's code.** One file: HTML + CSS + vanilla JS. No
+  frameworks, no build step, no external JS/CSS dependencies. ~96KB. (Was `erasmus.html`;
+  renamed so Cloudflare Pages serves it as the entry point.)
+- `data/<Gallery>/*.webp` — **the photos**, as ordinary files. `Home/`, `Week1/`,
+  `Week2/`, `Leipzig/`, `Dresden/`, `FreeTime/`. ~3.5MB for 32 photos, already
+  well-compressed webp. Deployed alongside `index.html`, and it must be committed or the
+  live site shows placeholders. Directory names are capitalised and paths are
+  **case-sensitive** on Pages, so `data/Week1/...` is not `data/week1/...`.
+- `converter.py`, `manifest.template.json` — **no longer used.** They base64-embedded
+  photos into `index.html` back when the page carried its own images; that approach was
+  dropped in favour of `data/`. Kept only in case the embedding is ever wanted again.
+  (Also: this dev machine has only the Microsoft Store Python stub — `python3` and `node`
+  both resolve to nothing — so neither could run here anyway.)
 
 ## Hard constraints — do not violate
 
-- `index.html` stays a single file. No splitting into `.css`/`.js`, no npm/build
+- All the *code* stays in `index.html`. No splitting into `.css`/`.js`, no npm/build
   tooling, no CDN `<script>` tags, no frameworks (React/Vue/etc.), no jQuery. Vanilla JS
-  only.
+  only. (Photos are the one exception — they are files under `data/`, referenced by path.
+  That is deliberate, not a slip.)
 - No page scrolling, at any viewport. The whole page fits one screen
-  (`html,body{overflow:hidden}`), desktop and mobile both.
-- Keep `converter.py` separate from `index.html` — it's a dev tool, not part of the site.
+  (`html,body{overflow:hidden}`), desktop and mobile both — including the postcard's
+  back face, which has its own `overflow:hidden` and drops the address block on short
+  viewports for exactly this reason.
 
 ## Architecture (inside index.html's `<script>`)
 
@@ -39,18 +43,22 @@ Four data structures, intentionally decoupled:
   which of the 6 galleries (`home`, `week1`, `week2`, `leipzig`, `dresden`, `freetime`),
   in display order. Not fixed at 5 per gallery — add/remove ids freely; the viewer is
   length-agnostic (including the 0-image case, see Gotchas).
-- **`IMAGES`** — `{ photoId: { src: "" | "data:image/jpeg;base64,..." } }`. One entry per
-  id, language-independent (a photo isn't translated). Empty `src` → the viewer shows a
-  postcard-style placeholder automatically, no network request. **`converter.py` rewrites
-  entries here with a regex matching the literal pattern `"id": { src:"..." }`**, inside
-  the `/* ===== IMAGES:START ===== */` … `IMAGES:END` markers. Don't hand-reformat that
-  block's spacing or the script stops matching.
-- **`POSTMARK_PLACE` + `PHOTO_META`** — the place/date on the postcard's cancellation mark.
-  `POSTMARK_PLACE` is a per-gallery default place; `PHOTO_META[id]` optionally overrides
-  `place` and carries `date` as ISO `YYYY-MM-DD`. An empty `date` just omits the date line,
-  so dates can be filled in as the stay goes on. **This is deliberately NOT a field on
-  `IMAGES`** — `converter.py`'s regex expects each `IMAGES` entry to contain nothing but
-  `src`, so any extra per-photo data has to live in its own structure. Place names are
+- **`IMAGES`** — `{ photoId: { src: "" | "data/Gallery/file.webp" } }`. One entry per id,
+  language-independent (a photo isn't translated). Empty `src` → the viewer shows a
+  postcard-style placeholder automatically, no request made. Keep each entry to nothing
+  but `src`; per-photo extras go in `PHOTO_META`. The block sits inside marker comments
+  that are matched **literally, including their `=====` decoration** — the surrounding
+  prose deliberately no longer spells the bare marker words, because a loose search for
+  them matches the explanatory comment first and splices new content *into* that comment,
+  silently commenting out the whole declaration. (This happened; the symptom is
+  "IMAGES is not defined" while every text-level grep still looks perfect.)
+- **`POSTMARK_PLACE` + `PHOTO_META`** — per-photo data that isn't the image itself.
+  `POSTMARK_PLACE` is a per-gallery default place for the cancellation mark;
+  `PHOTO_META[id]` optionally overrides `place`, carries `date` as ISO `YYYY-MM-DD`, and
+  carries **`w`/`h`, the photo's real pixel dimensions**. An empty `date` just omits the
+  date line, so dates can be filled in as the stay goes on. The `w`/`h` are what make the
+  card the right size and shape *before* the file loads — see the sizing gotcha below —
+  so update them whenever a photo is replaced by one of a different shape. Place names are
   intentionally untranslated (a real postmark shows the local name).
 - **`I18N`** — `{ langCode: { ui: {...}, captions: { photoId: {caption, blurb, alt, note} } } }`.
   All user-facing text, one block per language. Currently `en`, `de`, `sk`. `blurb` is the
@@ -70,11 +78,32 @@ one attribute + one dict key, nothing else.
 
 ## Known gotchas — don't regress these
 
-- `.img-el` sizing lives on the `<img>` itself (`max-width`/`max-height`/`aspect-ratio`,
-  `width:auto;height:auto`), not on the `.img-wrap` div around it. A plain `<div>` with
-  its own `aspect-ratio` can render wider than its flex parent and overflow the postcard
-  border on narrow phones; a replaced element like `<img>` can't. Don't move sizing onto
-  `.img-wrap`.
+- `.img-el` sizing lives on the `<img>` itself, not on the `.img-wrap` div around it. A
+  plain `<div>` with its own `aspect-ratio` can render wider than its flex parent and
+  overflow the postcard border on narrow phones; a replaced element like `<img>` can't.
+  Don't move sizing onto `.img-wrap`.
+- **How the photo is sized** (this replaced an earlier `width:auto;height:auto` +
+  `max-width`/`max-height` + fixed `aspect-ratio:3/2` + `object-fit:cover` setup — don't
+  reinstate any part of that without reading this):
+  - There is **no fixed aspect-ratio and no `cover`**. The photos are a mix of portrait
+    (3:4), landscape (4:3) and square; a 3:2 centre-crop cut the top and bottom off every
+    portrait one, heads included. `object-fit:contain` + the real ratio means nothing is
+    cropped.
+  - The ratio arrives as a CSS custom property `--ar`, set inline per photo by
+    `showImage()` from `PHOTO_META`'s `w`/`h`, with a `1.5` fallback for empty slots.
+  - The width is `min(66vw, 760px, calc(min(64vh,600px) * var(--ar)))`. The third term is
+    the height cap expressed as a width, which is what keeps the photo inside *both* caps.
+    **`max-width`/`max-height` cannot do this job any more:** they only preserve an
+    image's proportions while width and height are `auto`, and an `auto`-sized `<img>`
+    that hasn't loaded has no intrinsic size — so the card would collapse to nothing until
+    the file arrived, and stay collapsed if it 404'd. Photos are separate files now, so
+    that is a real request, not bytes already in the page. Giving width and height
+    explicitly instead would make `max-*` clamp each axis independently and distort the
+    box (observed: 760×461 for a photo that should be 346×461).
+- A portrait photo makes a portrait card, and the postcard's divided back can't run two
+  columns side by side in one — they get too narrow to read. `showImage()` adds
+  `.is-portrait` to `.image-frame` when `w < h`, and the back stacks instead. This case
+  didn't exist while everything was cropped to 3:2 landscape.
 - `.image-frame` needs `min-width:0` — it's a flex item, and without that, flexbox won't
   let it shrink below its content's intrinsic width. That's what caused arrows to get
   clipped off-screen on mobile before this was added.
@@ -103,13 +132,22 @@ one attribute + one dict key, nothing else.
 
 ## Current content state
 
-Photos embedded: `home-1`, `home-3`, `home-4`, `home-5`, `week1-1..4`.
-Still placeholder (lorem ipsum blurb, no `note`, empty `src`): `week1-5`, and everything in
-`week2`, `leipzig`, `dresden`, `freetime`.
-Real text but no photo yet: `home-2` (reserved for a guitar photo) — it has a real
-caption/blurb/note in all three languages, just an empty `src`.
-Postcard backs: real `note` text in en/de/sk for `home-1..5` and `week1-1..4` (the nine
-slots with real captions). All 30 `PHOTO_META` dates are still `""`.
+41 slots, 32 with photos. Gallery sizes are **not** 5 each — `leipzig` has 15 and
+`dresden` has 6; the viewer is length-agnostic, so add and remove freely.
+
+- Fully done (photo + real caption/blurb/alt/note in en/de/sk): all of `home` except
+  `home-2`, all of `week1`, `leipzig-1..15`, `dresden-1..6`, `freetime-1..2`.
+- Real text, no photo yet: `home-2`, reserved for a guitar photo.
+- Still placeholder (lorem ipsum blurb, no `note`, empty `src`): `week2-1..5` and
+  `freetime-3..5`. `data/Week2/` exists but is empty.
+- **Leipzig captions are drafted from the photos, not from Jano's account of the day** —
+  he said he'd supply the details later. The facts in them (the Bach churches, the
+  monument, the Koliba stall) are read off the images; `leipzig-4` is deliberately called
+  only "the dark church" because the building wasn't identified with confidence.
+- `data/Dresden/dresden_zwinger.webp` is **not** the Zwinger — it's the Katholische
+  Hofkirche. The caption says Hofkirche and the note jokes about the filename. Rename the
+  file (and its `IMAGES` path) if that ever gets tidied.
+- All 41 `PHOTO_META` dates are still `""`, so postmarks show a place but no date.
 
 ## Caption style
 
@@ -120,20 +158,28 @@ postcard (first person, one concrete detail, a dry aside is welcome). Match the 
 whatever's already filled in `I18N.en.captions`. Write all three languages (en/de/sk)
 together for a given photo, not English-only-then-backfill.
 
-## Running the converter
+## Adding a photo
 
-```
-pip install pillow --break-system-packages
-python3 converter.py --html index.html --manifest manifest.json
-```
+No tooling involved any more — it's four edits, all by hand:
 
-`manifest.json`: `{ "photo-id": "path/to/source/photo.jpg" }` — ids must already exist in
-`GALLERY_STRUCTURE`/`IMAGES` (add them there first if new). Unknown ids are skipped with a
-stderr warning, not silently dropped or crashed on. The script reports each photo's
-encoded size and a running total; treat >15MB combined as the signal to lower
-`MAX_DIMENSION` / `JPEG_QUALITY` at the top of `converter.py`, not to switch approach.
+1. Drop the file into the right `data/<Gallery>/` folder. Keep it webp and roughly
+   1000–1300px on the long edge; the display caps are 760×600 CSS px, so anything much
+   larger is wasted bytes.
+2. Add its id to `GALLERY_STRUCTURE` in the position you want it shown.
+3. Add an `IMAGES` entry with the path (exact case), and a `PHOTO_META` entry with the
+   file's real `w`/`h` — without those the card is the wrong shape until the file loads.
+4. Add a `captions` entry in **all three** `I18N` blocks.
+
+Ids must exist in all four structures or the gallery will render a fallback with the raw
+id as its caption.
 
 ## Deployment
 
-Static file, GitHub → Cloudflare Pages, no build command and no output-directory config —
-`index.html` is served as-is, and its name already makes it Pages' entry point.
+Static, GitHub → Cloudflare Pages, no build command and no output-directory config —
+`index.html` is served as-is and its name already makes it Pages' entry point.
+
+`data/` must be committed and pushed along with it; it is now part of the deployed site,
+not a local scratch folder. Two consequences of photos being files rather than embedded
+bytes: paths are **case-sensitive** on Pages though not on Windows, so a wrong-case path
+works locally and 404s live; and the page **no longer works offline** — it used to carry
+its own images and survive dead venue wifi, which it can't now.
