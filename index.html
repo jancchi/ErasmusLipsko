@@ -20,6 +20,10 @@
     --font-body:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
 
     --nav-h:64px;
+    /* the postcard's white border. Drives .postcard-front's padding AND
+     .stage's width, which have to agree or the card can overhang the
+     stage and slide under an arrow. */
+    --frame-pad:12px;
   }
 
   *{ box-sizing:border-box; }
@@ -164,6 +168,27 @@
     max-width:1040px;
   }
 
+  /* Fixed-width column the card is centred in. The card is only as wide
+     as its photo (see .img-el), so without this the flex row re-centres
+     on every navigation and both arrows slide sideways — enough that the
+     next arrow walks out from under the pointer between clicks. The width
+     is the widest a photo can be plus its two white borders, so no card
+     ever overhangs it.
+     flex-shrink stays enabled (and min-width:0 allows it) so that on a
+     very narrow phone the row can still compress instead of pushing the
+     arrows off-screen; that shrinking depends on the viewport, never on
+     which photo is showing, so the arrows still hold still while you
+     navigate. .img-el's max-width:100% is what keeps the photo inside
+     the stage when that happens. */
+  .stage{
+    flex:0 1 auto;
+    min-width:0;
+    width:calc(min(66vw,760px) + 2 * var(--frame-pad));
+    max-width:100%;
+    display:flex;
+    justify-content:center;
+  }
+
   .arrow{
     flex:0 0 auto;
     width:clamp(34px,5vw,46px); height:clamp(34px,5vw,46px);
@@ -243,6 +268,9 @@
        photo stays inside BOTH caps without either one squashing it. */
     /* EDIT: these three values control the displayed photo size */
     width:min(66vw, 760px, calc(min(64vh, 600px) * var(--ar, 1.5)));
+    /* safety net for when .stage is compressed on a very narrow phone:
+       height stays auto, so the ratio is preserved as the width drops */
+    max-width:100%;
     height:auto;
     aspect-ratio:var(--ar, 1.5);
     object-fit:contain;
@@ -336,7 +364,9 @@
   }
   .postcard-front{
     margin:0;                 /* <figure> default margin */
-    padding:12px 12px 0;      /* the matting that used to live on .image-frame */
+    /* the matting that used to live on .image-frame; the same token sets
+       .stage's width, so the two can't drift apart */
+    padding:var(--frame-pad) var(--frame-pad) 0;
   }
   .postcard-back{
     position:absolute; inset:0;
@@ -495,7 +525,11 @@
     .pc-greeting{ font-size:.78rem; }
   }
   @media (max-width:420px){
-    .postcard-front{ padding:8px 8px 0; }
+    /* retunes both the card's white border and .stage's width at once.
+       This used to be a `.postcard-front{padding:...}` override, which
+       had to sit AFTER the base rule to win; as a token it can't lose a
+       source-order race at all. */
+    :root{ --frame-pad:8px; }
     .postcard-back{ padding:10px 12px; gap:8px; }
     .pc-address{ flex-basis:34%; }
     .pc-note{ font-size:.68rem; line-height:1.42; }
@@ -613,81 +647,87 @@
     <div class="viewer">
       <button type="button" class="arrow arrow-prev" id="prevBtn" data-i18n-aria="prevLabel" aria-label="Previous photo">&#8249;</button>
 
-      <!-- The card: .image-frame holds the perspective, .postcard holds
-           the two faces. The <figure> is the FRONT face so that
-           <figcaption> stays a direct child of <figure> (and so the
-           front face, in normal flow, keeps driving the card's size). -->
-      <div class="image-frame" id="imageFrame">
-        <div class="postcard" id="postcard">
-
-          <figure class="postcard-face postcard-front" id="postcardFront">
-            <div class="stamp" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M3 6l9 6 9-6"/><rect x="3" y="5" width="18" height="14" rx="1.5"/></svg>
-              <span>DE</span>
-            </div>
-
-            <div class="img-wrap">
-              <div class="placeholder-fill" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/>
-                  <circle cx="12" cy="13" r="3.5"/>
-                </svg>
-                <span class="ph-text" id="placeholderText"></span>
+      <!-- .stage is a fixed-width column that the card sits centred in.
+           The card itself is only as wide as its photo, which is why the
+           arrows used to slide left and right as you navigated. The stage
+           never changes width, so they hold still. -->
+      <div class="stage">
+        <!-- The card: .image-frame holds the perspective, .postcard holds
+             the two faces. The <figure> is the FRONT face so that
+             <figcaption> stays a direct child of <figure> (and so the
+             front face, in normal flow, keeps driving the card's size). -->
+        <div class="image-frame" id="imageFrame">
+          <div class="postcard" id="postcard">
+  
+            <figure class="postcard-face postcard-front" id="postcardFront">
+              <div class="stamp" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M3 6l9 6 9-6"/><rect x="3" y="5" width="18" height="14" rx="1.5"/></svg>
+                <span>DE</span>
               </div>
-              <!-- src is populated from IMAGES (see <script>) — never edited directly here -->
-              <img class="img-el" id="galleryImage" src="" alt="" />
-            </div>
-
-            <figcaption>
-              <span class="kicker" id="galleryKicker"></span>
-              <span class="caption-main" id="galleryCaption"></span>
-              <span class="caption-blurb" id="galleryBlurb"></span>
-              <span class="counter" id="galleryCounter"></span>
-            </figcaption>
-          </figure>
-
-          <!-- BACK face. Message text comes from I18N captions[id].note
-               (falling back to .blurb); place/date come from POSTMARK_PLACE
-               and PHOTO_META. All of it is filled in render(). -->
-          <div class="postcard-face postcard-back" id="postcardBack" aria-hidden="true">
-            <div class="pc-message">
-              <span class="pc-greeting" id="pcGreeting"></span>
-              <p class="pc-note" id="pcNote"></p>
-              <span class="pc-sign" id="pcSign"></span>
-            </div>
-
-            <div class="pc-split" aria-hidden="true"></div>
-
-            <div class="pc-address">
-              <div class="pc-stamp-zone" aria-hidden="true">
-                <div class="pc-stamp">
-                  <svg viewBox="0 0 24 24"><path d="M3 6l9 6 9-6"/><rect x="3" y="5" width="18" height="14" rx="1.5"/></svg>
-                  <span class="pc-stamp-value">0,95 &euro;</span>
+  
+              <div class="img-wrap">
+                <div class="placeholder-fill" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/>
+                    <circle cx="12" cy="13" r="3.5"/>
+                  </svg>
+                  <span class="ph-text" id="placeholderText"></span>
                 </div>
-                <div class="pc-postmark">
-                  <span class="pc-mark-place" id="pcMarkPlace"></span>
-                  <span class="pc-mark-date" id="pcMarkDate"></span>
+                <!-- src is populated from IMAGES (see <script>) — never edited directly here -->
+                <img class="img-el" id="galleryImage" src="" alt="" />
+              </div>
+  
+              <figcaption>
+                <span class="kicker" id="galleryKicker"></span>
+                <span class="caption-main" id="galleryCaption"></span>
+                <span class="caption-blurb" id="galleryBlurb"></span>
+                <span class="counter" id="galleryCounter"></span>
+              </figcaption>
+            </figure>
+  
+            <!-- BACK face. Message text comes from I18N captions[id].note
+                 (falling back to .blurb); place/date come from POSTMARK_PLACE
+                 and PHOTO_META. All of it is filled in render(). -->
+            <div class="postcard-face postcard-back" id="postcardBack" aria-hidden="true">
+              <div class="pc-message">
+                <span class="pc-greeting" id="pcGreeting"></span>
+                <p class="pc-note" id="pcNote"></p>
+                <span class="pc-sign" id="pcSign"></span>
+              </div>
+  
+              <div class="pc-split" aria-hidden="true"></div>
+  
+              <div class="pc-address">
+                <div class="pc-stamp-zone" aria-hidden="true">
+                  <div class="pc-stamp">
+                    <svg viewBox="0 0 24 24"><path d="M3 6l9 6 9-6"/><rect x="3" y="5" width="18" height="14" rx="1.5"/></svg>
+                    <span class="pc-stamp-value">0,95 &euro;</span>
+                  </div>
+                  <div class="pc-postmark">
+                    <span class="pc-mark-place" id="pcMarkPlace"></span>
+                    <span class="pc-mark-date" id="pcMarkDate"></span>
+                  </div>
+                </div>
+                <div class="pc-lines">
+                  <span class="pc-to" data-i18n="postcard.to">To</span>
+                  <span class="pc-line"></span>
+                  <span class="pc-line"></span>
+                  <span class="pc-line pc-country" id="pcCountry"></span>
                 </div>
               </div>
-              <div class="pc-lines">
-                <span class="pc-to" data-i18n="postcard.to">To</span>
-                <span class="pc-line"></span>
-                <span class="pc-line"></span>
-                <span class="pc-line pc-country" id="pcCountry"></span>
-              </div>
             </div>
+  
           </div>
-
+  
+          <button type="button" class="flip-btn" id="flipBtn" aria-pressed="false" aria-label="Turn the postcard over">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+              <path d="M3.5 12a8.5 8.5 0 0 1 14.6-5.9"/>
+              <path d="M20.5 12a8.5 8.5 0 0 1-14.6 5.9"/>
+              <path d="M18.2 2.7v3.6h-3.6"/>
+              <path d="M5.8 21.3v-3.6h3.6"/>
+            </svg>
+          </button>
         </div>
-
-        <button type="button" class="flip-btn" id="flipBtn" aria-pressed="false" aria-label="Turn the postcard over">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
-            <path d="M3.5 12a8.5 8.5 0 0 1 14.6-5.9"/>
-            <path d="M20.5 12a8.5 8.5 0 0 1-14.6 5.9"/>
-            <path d="M18.2 2.7v3.6h-3.6"/>
-            <path d="M5.8 21.3v-3.6h3.6"/>
-          </svg>
-        </button>
       </div>
 
       <button type="button" class="arrow arrow-next" id="nextBtn" data-i18n-aria="nextLabel" aria-label="Next photo">&#8250;</button>
@@ -723,7 +763,9 @@
                "leipzig-6","leipzig-7","leipzig-8","leipzig-9","leipzig-10",
                "leipzig-11","leipzig-12","leipzig-13","leipzig-14","leipzig-15"],
     dresden:  ["dresden-1","dresden-2","dresden-3","dresden-4","dresden-5","dresden-6"],
-    freetime: ["freetime-1","freetime-2","freetime-3","freetime-4","freetime-5"]
+    /* the two walks from Gut Wehlitz, then the BMW plant, then the Halle day */
+    freetime: ["freetime-1","freetime-2","freetime-3","freetime-4",
+               "freetime-5","freetime-6","freetime-7"]
   };
 
   /* ============================================================
@@ -755,7 +797,9 @@
      a photo with one of a different shape. */
   const PHOTO_META = {
     "home-1": { place:"Dresden", date:"", w:952, h:1269 },
-    "home-2": { date:"" },
+    /* taken at home before the trip — "Bratislava" is a guess, matching
+       home-4's departure board; change it to Jano's actual town */
+    "home-2": { place:"Bratislava", date:"", w:1024, h:768 },
     "home-3": { date:"", w:1092, h:1092 },
     "home-4": { place:"Bratislava", date:"", w:1269, h:952 },
     "home-5": { place:"Dresden", date:"", w:1269, h:952 },
@@ -764,7 +808,11 @@
     "week1-3": { date:"", w:952, h:1269 },
     "week1-4": { date:"", w:952, h:1265 },
     "week1-5": { date:"", w:765, h:1020 },
-    "week2-1": { date:"" }, "week2-2": { date:"" }, "week2-3": { date:"" }, "week2-4": { date:"" }, "week2-5": { date:"" },
+    "week2-1": { date:"", w:1024, h:768 },
+    "week2-2": { date:"", w:1024, h:768 },
+    "week2-3": { date:"", w:578, h:768 },
+    "week2-4": { date:"", w:578, h:768 },
+    "week2-5": { date:"", w:1024, h:768 },
     "leipzig-1": { date:"", w:1280, h:960 },
     "leipzig-2": { date:"", w:765, h:1020 },
     "leipzig-3": { date:"", w:1280, h:960 },
@@ -789,7 +837,12 @@
     /* the airport and the tower are both a walk from Gut Wehlitz */
     "freetime-1": { date:"", w:1280, h:960 },
     "freetime-2": { date:"", w:1280, h:854 },
-    "freetime-3": { date:"" }, "freetime-4": { date:"" }, "freetime-5": { date:"" }
+    /* the BMW plant is in Leipzig; the last three are all the Halle day */
+    "freetime-3": { place:"Leipzig", date:"", w:1024, h:768 },
+    "freetime-4": { place:"Leipzig", date:"", w:1024, h:768 },
+    "freetime-5": { place:"Halle", date:"", w:1024, h:768 },
+    "freetime-6": { place:"Halle", date:"", w:1024, h:768 },
+    "freetime-7": { place:"Halle", date:"", w:1024, h:768 }
   };
 
   /* ============================================================
@@ -812,7 +865,7 @@
   /* ===== IMAGES:START ===== */
   const IMAGES = {
     "home-1": { src:"data/Home/selfie_before_station.webp" },
-    "home-2": { src:"" },
+    "home-2": { src:"data/Home/guitar.webp" },
     "home-3": { src:"data/Home/erasmus_logo.webp" },
     "home-4": { src:"data/Home/waiting_for_train_in_BA.webp" },
     "home-5": { src:"data/Home/group_in_dresden.webp" },
@@ -821,7 +874,11 @@
     "week1-3": { src:"data/Week1/3_guys_finished_work.webp" },
     "week1-4": { src:"data/Week1/putting_screwdriver_into_socket.webp" },
     "week1-5": { src:"data/Week1/smart_home.webp" },
-    "week2-1": { src:"" }, "week2-2": { src:"" }, "week2-3": { src:"" }, "week2-4": { src:"" }, "week2-5": { src:"" },
+    "week2-1": { src:"data/Week2/looking_at_loxone.webp" },
+    "week2-2": { src:"data/Week2/loxone2.webp" },
+    "week2-3": { src:"data/Week2/loxone_miniserver.webp" },
+    "week2-4": { src:"data/Week2/loxone_physical.webp" },
+    "week2-5": { src:"data/Week2/loxone1.webp" },
     "leipzig-1": { src:"data/Leipzig/leipzig_hauptbahnhof.webp" },
     "leipzig-2": { src:"data/Leipzig/leipzig_metro.webp" },
     "leipzig-3": { src:"data/Leipzig/leipzig_university.webp" },
@@ -845,7 +902,15 @@
     "dresden-6": { src:"data/Dresden/dresden_church.webp" },
     "freetime-1": { src:"data/FreeTime/antonov.webp" },
     "freetime-2": { src:"data/FreeTime/bismark_tower.webp" },
-    "freetime-3": { src:"" }, "freetime-4": { src:"" }, "freetime-5": { src:"" }
+    "freetime-3": { src:"data/FreeTime/BMW.webp" },
+    /* %20 = the literal space in these two filenames. Browsers would
+       encode it themselves, but spelling it out keeps the path valid
+       anywhere it gets copied. Renaming the files without spaces would
+       be tidier still. */
+    "freetime-4": { src:"data/FreeTime/BMW%20motorcycle.webp" },
+    "freetime-5": { src:"data/FreeTime/Halle.webp" },
+    "freetime-6": { src:"data/FreeTime/LudovitStur.webp" },
+    "freetime-7": { src:"data/FreeTime/Oldest%20choco%20shop.webp" }
   };
   /* ===== IMAGES:END ===== */
 
@@ -879,7 +944,7 @@
       },
       captions: {
         "home-1":{ caption:"Hi, I'm Jano", blurb:"I work at Asseco CEIT, and when I'm not coding I'm probably playing Factorio.", alt:"Portrait of Jano in front of Dresden's Hauptbahnhof on a rainy day", note:"Day one, Dresden, and it rained the entire time. I came here to write code — nobody warned me how much of the next two weeks would involve screwdrivers." },
-        "home-2":{ caption:"I also play guitar", blurb:"A bit of music to balance out the screen time.", alt:"Jano playing guitar", note:"There's a guitar at home that gets picked up whenever the screen has won for the day. It didn't fit in the suitcase — the only thing I regret about packing." },
+        "home-2":{ caption:"I also play guitar", blurb:"A bit of music to balance out the screen time.", alt:"Jano sitting at home with a nylon-string acoustic guitar, a green Slovak songbook resting on his knee and bookshelves behind him", note:"That's the green songbook half the country has on a shelf somewhere, and a guitar that gets picked up whenever the screen has won for the day. It didn't fit in the suitcase — the only thing I regret about packing." },
         "home-3":{ caption:"On the Erasmus+ programme", blurb:"Two weeks in Germany, made possible by Erasmus+.", alt:"Erasmus+ programme graphic on a European Union flag background", note:"None of this happens without Erasmus+: two weeks of practice in Germany, paid for by a programme I mostly knew as a logo on a poster in the corridor. Turns out the poster meant it." },
         "home-4":{ caption:"Where it all began — Bratislava", blurb:"Departures board at the main station, minutes before setting off.", alt:"Departures board at Bratislava's main train station", note:"The last photo I took at home: the departures board in Bratislava, minutes before we left. Everyone else was counting luggage; I was counting how many platforms I could still get wrong." },
         "home-5":{ caption:"The whole group in Dresden", blurb:"Suitcases, backpacks, and everyone finally in one place.", alt:"Group photo of the Erasmus group with luggage at Dresden's train station", note:"The whole group, finally in one place, with more luggage than people. Somewhere in that pile is the bag I then spent an hour looking for." },
@@ -888,11 +953,11 @@
         "week1-3":{ caption:"Wiring up the power outlets", blurb:"Three of us, one wall full of holes, and a screwdriver.", alt:"Three friends posing next to a wall with electrical outlets and open conduit holes", note:"This is the part of the IT course that isn't in the brochure: three of us, one wall full of holes, and a single screwdriver between us. I came for the keyboard and got the wall." },
         "week1-4":{ caption:"Safety first", blurb:"(No humans were harmed.)", alt:"Close-up of hands wiring an electrical outlet with two screwdrivers", note:"Two screwdrivers, one outlet, and a photographer with questionable priorities. Everything was switched off at the box, and everyone still has all ten fingers." },
         "week1-5":{ caption:"The smart home board", blurb:"The last job of week one: make the lights do what the tablet says.", alt:"A hand using a colour wheel on a tablet to control a smart-home demo board with spotlights, wall switches and a Loxone module, one spotlight glowing red", note:"Week one ended on a wall of switches, spotlights and one Loxone box, wired up so that a tablet could run the lot. I spent a while picking exactly the right red for a bedroom nobody sleeps in." },
-        "week2-1":{ caption:"Back at it, week two", blurb:"Lorem ipsum dolor sit amet, consectetur.", alt:"Placeholder photo: back at the desk on Monday" },
-        "week2-2":{ caption:"Presenting our project", blurb:"Sed do eiusmod tempor incididunt ut labore.", alt:"Placeholder photo: presenting the project to the team" },
-        "week2-3":{ caption:"Debugging together", blurb:"Ut enim ad minim veniam, quis nostrud.", alt:"Placeholder photo: two people debugging at a screen" },
-        "week2-4":{ caption:"Certificate ceremony", blurb:"Duis aute irure dolor in reprehenderit.", alt:"Placeholder photo: receiving the completion certificate" },
-        "week2-5":{ caption:"Saying goodbye to the office", blurb:"Excepteur sint occaecat cupidatat non proident.", alt:"Placeholder photo: last goodbyes at the office" },
+        "week2-1":{ caption:"Back at the desks", blurb:"Week two was Loxone, and Loxone is mostly staring.", alt:"A classmate resting his chin on his hand at a desk, looking at Loxone Config software on a monitor, with Mac minis along the bench and smart-home demo boards on the wall behind", note:"Week two swapped screwdrivers for software: Loxone Config, most of the day. This is the exact face everyone makes about twenty minutes in." },
+        "week2-2":{ caption:"Kitchen, bedroom, boxes and wires", blurb:"Two rooms, drawn as blocks, with everything plugged into everything.", alt:"A screen showing Loxone Config with green Intelligent Room Controller blocks labelled Kitchen and Bedroom, joined to inputs and outputs by connecting lines", note:"Every room becomes a green box with a dozen inputs down one side and outputs down the other, and you join them up with lines until the house works. First programming I've done where a mistake turns a real light off." },
+        "week2-3":{ caption:"The Miniserver", blurb:"The whole house runs off one green box on a rail.", alt:"A bright green Loxone Miniserver mounted on a DIN rail inside an open electrical cabinet, surrounded by terminal blocks and brown, blue and network cabling", note:"All of it — lights, heating, alarm — comes down to this green brick on a rail in a cupboard. Everything else in the cabinet is just wires arguing about how to reach it." },
+        "week2-4":{ caption:"A house drawn in tape", blurb:"Living room, kitchen, service room — all on one wall.", alt:"A smart-home demo wall with rooms marked out in black tape and labelled Living Room, Kitchen and Service Room, holding recessed spotlights, a glass touch switch and a Loxone module, with sockets below", note:"The whole house is one wall with black tape marking out the rooms, so the living room is about forty centimetres from the kitchen. Easier to debug than a real one, and much easier to reach." },
+        "week2-5":{ caption:"It actually works", blurb:"Alarm armed, bedroom 21.8°, kitchen 21.9°. That was us.", alt:"The Loxone app interface showing a burglar alarm set to Armed, a door entry control, and lights and temperatures for Bedroom at 21.8 degrees and Kitchen at 21.9 degrees", note:"Two weeks of wiring and block diagrams, and here it is as an app: alarm armed, door listed, bedroom at 21.8 degrees. I have never been so pleased about a tenth of a degree." },
         "leipzig-1":{ caption:"Leipzig Hauptbahnhof", blurb:"Reportedly Europe's largest railway station by floor area. It feels it.", alt:"The long sandstone facade of Leipzig Hauptbahnhof seen from across the street, with a yellow and blue tram passing on the right", note:"The station is the size of a small town and has a shopping centre inside it, so every trip into Leipzig started with ten minutes of finding the right way out." },
         "leipzig-2":{ caption:"Down to the S-Bahn", blurb:"A very long staircase and a very clean tunnel.", alt:"Looking down a steep staircase into a white-tiled underground S-Bahn station in Leipzig's city tunnel, with passengers waiting on the platform below", note:"The city tunnel stations are all white tile and straight lines, lit like an operating theatre. Ours at home are not like this, and I took the photo mostly out of envy." },
         "leipzig-3":{ caption:"The university's glass church", blurb:"Half lecture hall, half cathedral, entirely on purpose.", alt:"The Paulinum of Leipzig University on Augustusplatz, a modern glass and stone building shaped like a gothic church front with a rose window", note:"The university built a glass building in the shape of the church that stood here until it was blown up in the sixties. A strange, sharp-edged thing to stand in front of, and I liked it a lot." },
@@ -916,9 +981,11 @@
         "dresden-6":{ caption:"Inside the Frauenkirche", blurb:"Luther's church, rebuilt out of its own rubble and painted in pastels.", alt:"The pastel and gold baroque interior of the Frauenkirche in Dresden, looking towards the altar and organ, with tiered galleries and full pews", note:"Pale pink, cream and gold, balcony stacked on balcony, and not a free seat in the place. Hard to keep in your head that all of it was a heap of stones on the square until the nineties." },
         "freetime-1":{ caption:"An Antonov after dark", blurb:"We walked to the airport purely to look at a very large aeroplane.", alt:"A large Antonov cargo aircraft lit up at night on the apron at Leipzig/Halle airport, seen across a dark field with a bicycle in the foreground", note:"Schkeuditz has an airport at the end of a walk, and the airport has Antonovs. My phone made a blurry mess of it, but standing near something that big in the dark was worth the detour." },
         "freetime-2":{ caption:"The Bismarck tower", blurb:"Another walk, another large grey thing at the end of it.", alt:"Three of us standing on the grass in front of the stone Bismarck tower near Schkeuditz on a sunny afternoon", note:"The shape of our free afternoons: pick something on the map, walk to it, photograph it, walk back. This one was a squat stone tower for Otto von Bismarck, and the sun came out for exactly as long as this photo took." },
-        "freetime-3":{ caption:"Evenings with the group", blurb:"Ut enim ad minim veniam, quis nostrud.", alt:"Placeholder photo: an evening get-together with the group" },
-        "freetime-4":{ caption:"Exploring the countryside", blurb:"Duis aute irure dolor in reprehenderit.", alt:"Placeholder photo: a walk through the countryside" },
-        "freetime-5":{ caption:"Last night in Germany", blurb:"Excepteur sint occaecat cupidatat non proident.", alt:"Placeholder photo: the group on their final evening" }
+        "freetime-3":{ caption:"The BMW plant", blurb:"Half factory, half cathedral, with car bodies flying overhead.", alt:"The vast concrete interior of the BMW plant in Leipzig, with an elevated glazed conveyor crossing above the visitors and a lime-green BMW on display below", note:"The building is all raw concrete and blue light, and unfinished car bodies slide along a glass bridge over your head while you stand there. Nobody designs a factory like that unless they want you looking up." },
+        "freetime-4":{ caption:"The one I'd take", blurb:"If they'd left the keys in it, this postcard would be shorter.", alt:"A black BMW F 850 GS adventure motorcycle on a display plinth indoors, with a white, blue and red one behind it and visitors standing around", note:"An 850 GS on a white plinth, close enough to touch and firmly not for sale to visiting students. I spent longer looking at this than at any of the cars." },
+        "freetime-5":{ caption:"Halle, and a bread roll", blurb:"Four church towers, one red tower, and lunch in hand.", alt:"Selfie of three of us on the market square in Halle, with the Red Tower and the four towers of the Marktkirche behind us, and a bread roll in one hand", note:"Halle's market square has a red tower on one side and a church with four towers on the other, and we spent most of our time there deciding where to eat. The bread roll won." },
+        "freetime-6":{ caption:"Štúr, in Germany", blurb:"The man who gave us our written language, eight hundred kilometres from home.", alt:"Three of us posing around a bronze bust of Ľudovít Štúr on a stone plinth in a park in Halle, one hand resting on the statue's cheek", note:"Ľudovít Štúr studied in Halle, so his bust stands in a German park — the man who gave us the written language we were speaking while we stood in front of it. We did not treat the moment with the dignity it deserved." },
+        "freetime-7":{ caption:"Germany's oldest chocolate factory", blurb:"Halloren have been doing this in Halle since 1804.", alt:"Inside the Halloren chocolate factory shop in Halle, with pallets of boxed chocolate, gift baskets tied with red ribbon and shelves of sweets", note:"Halloren have been making chocolate in Halle since 1804, which makes them the oldest in Germany and, that afternoon, the most expensive room we walked into. Everybody left carrying something." }
       }
     },
     de: {
@@ -938,7 +1005,7 @@
       },
       captions: {
         "home-1":{ caption:"Hallo, ich bin Jano", blurb:"Ich arbeite bei Asseco CEIT und wenn ich nicht programmiere, spiele ich wahrscheinlich Factorio.", alt:"Porträt von Jano vor dem Dresdner Hauptbahnhof an einem regnerischen Tag", note:"Tag eins, Dresden, und es hat die ganze Zeit geregnet. Ich bin zum Programmieren hergekommen — niemand hat mich gewarnt, wie viel von den nächsten zwei Wochen mit Schraubenziehern zu tun haben würde." },
-        "home-2":{ caption:"Ich spiele auch Gitarre", blurb:"Ein bisschen Musik als Ausgleich zur Bildschirmzeit.", alt:"Jano beim Gitarrespielen", note:"Zu Hause steht eine Gitarre, die immer dann dran ist, wenn der Bildschirm für heute gewonnen hat. In den Koffer hat sie nicht gepasst — das Einzige, was ich beim Packen bereue." },
+        "home-2":{ caption:"Ich spiele auch Gitarre", blurb:"Ein bisschen Musik als Ausgleich zur Bildschirmzeit.", alt:"Jano sitzt zu Hause mit einer Konzertgitarre, auf dem Knie ein grünes slowakisches Liederbuch, dahinter Bücherregale", note:"Das ist das grüne Liederbuch, das das halbe Land irgendwo im Regal stehen hat, und eine Gitarre, die immer dann dran ist, wenn der Bildschirm für heute gewonnen hat. In den Koffer hat sie nicht gepasst — das Einzige, was ich beim Packen bereue." },
         "home-3":{ caption:"Im Rahmen von Erasmus+", blurb:"Zwei Wochen in Deutschland, ermöglicht durch Erasmus+.", alt:"Erasmus+-Grafik vor dem Hintergrund der Europaflagge", note:"Ohne Erasmus+ gäbe es das alles nicht: zwei Wochen Praxis in Deutschland, finanziert von einem Programm, das ich vor allem als Logo auf einem Plakat im Flur kannte. Das Plakat hat es offenbar ernst gemeint." },
         "home-4":{ caption:"Wo alles begann — Bratislava", blurb:"Abfahrtstafel am Hauptbahnhof, kurz vor der Abreise.", alt:"Abfahrtstafel am Hauptbahnhof Bratislava", note:"Das letzte Foto von daheim: die Abfahrtstafel in Bratislava, Minuten vor der Abreise. Alle anderen zählten Gepäckstücke; ich zählte, wie viele Bahnsteige ich noch verwechseln könnte." },
         "home-5":{ caption:"Die ganze Gruppe in Dresden", blurb:"Koffer, Rucksäcke, und endlich alle an einem Ort.", alt:"Gruppenfoto der Erasmus-Gruppe mit Gepäck im Bahnhof Dresden", note:"Die ganze Gruppe, endlich an einem Ort, mit mehr Gepäck als Menschen. Irgendwo in diesem Haufen steckt die Tasche, die ich danach eine Stunde gesucht habe." },
@@ -947,11 +1014,11 @@
         "week1-3":{ caption:"Steckdosen verkabeln", blurb:"Wir zu dritt, eine Wand voller Löcher, und ein Schraubenzieher.", alt:"Drei Freunde vor einer Wand mit Steckdosen und offenen Leitungslöchern", note:"Das ist der Teil des IT-Kurses, der in keinem Prospekt steht: wir zu dritt, eine Wand voller Löcher und ein einziger Schraubenzieher. Ich kam für die Tastatur und bekam die Wand." },
         "week1-4":{ caption:"Sicherheit geht vor", blurb:"(Es kam niemand zu Schaden.)", alt:"Nahaufnahme von Händen, die mit zwei Schraubenziehern eine Steckdose verkabeln", note:"Zwei Schraubenzieher, eine Steckdose und ein Fotograf mit fragwürdigen Prioritäten. Am Kasten war alles abgeschaltet, und alle haben noch zehn Finger." },
         "week1-5":{ caption:"Die Smart-Home-Tafel", blurb:"Die letzte Aufgabe der ersten Woche: die Lampen sollen tun, was das Tablet sagt.", alt:"Eine Hand steuert über ein Farbrad auf dem Tablet eine Smart-Home-Tafel mit Spots, Schaltern und einem Loxone-Modul, ein Spot leuchtet rot", note:"Die erste Woche endete an einer Wand aus Schaltern, Spots und einer Loxone-Box, verkabelt so, dass ein Tablet das Ganze steuert. Ich habe ziemlich lange das genau richtige Rot für ein Schlafzimmer ausgesucht, in dem niemand schläft." },
-        "week2-1":{ caption:"Zurück an die Arbeit, Woche zwei", blurb:"Lorem ipsum dolor sit amet, consectetur.", alt:"Platzhalterfoto: zurück am Schreibtisch am Montag" },
-        "week2-2":{ caption:"Präsentation unseres Projekts", blurb:"Sed do eiusmod tempor incididunt ut labore.", alt:"Platzhalterfoto: Präsentation des Projekts vor dem Team" },
-        "week2-3":{ caption:"Gemeinsames Debugging", blurb:"Ut enim ad minim veniam, quis nostrud.", alt:"Platzhalterfoto: zwei Personen beim Debugging am Bildschirm" },
-        "week2-4":{ caption:"Übergabe der Zertifikate", blurb:"Duis aute irure dolor in reprehenderit.", alt:"Platzhalterfoto: Übergabe des Abschlusszertifikats" },
-        "week2-5":{ caption:"Abschied vom Büro", blurb:"Excepteur sint occaecat cupidatat non proident.", alt:"Platzhalterfoto: letzter Abschied im Büro" },
+        "week2-1":{ caption:"Zurück an den Schreibtischen", blurb:"Woche zwei war Loxone, und Loxone ist vor allem Starren.", alt:"Ein Mitschüler stützt am Schreibtisch den Kopf in die Hand und schaut auf die Loxone-Config-Software auf einem Monitor, daneben Mac minis und an der Wand dahinter Smart-Home-Tafeln", note:"Woche zwei tauschte Schraubenzieher gegen Software: Loxone Config, fast den ganzen Tag. Das ist genau das Gesicht, das nach etwa zwanzig Minuten alle machen." },
+        "week2-2":{ caption:"Küche, Schlafzimmer, Kästen und Drähte", blurb:"Zwei Räume als Blöcke gezeichnet, in denen alles mit allem verbunden ist.", alt:"Ein Bildschirm mit Loxone Config, grüne Blöcke „Intelligent Room Controller“ für Küche und Schlafzimmer, über Verbindungslinien mit Ein- und Ausgängen verdrahtet", note:"Jeder Raum wird zu einem grünen Kasten mit einem Dutzend Eingängen auf der einen und Ausgängen auf der anderen Seite, und man verbindet sie mit Linien, bis das Haus funktioniert. Das erste Programmieren, bei dem ein Fehler ein echtes Licht ausschaltet." },
+        "week2-3":{ caption:"Der Miniserver", blurb:"Das ganze Haus läuft über einen grünen Kasten auf einer Schiene.", alt:"Ein leuchtend grüner Loxone Miniserver auf einer Hutschiene in einem offenen Schaltschrank, umgeben von Reihenklemmen sowie brauner, blauer und Netzwerkverkabelung", note:"Alles — Licht, Heizung, Alarm — läuft auf diesen grünen Ziegel auf einer Schiene im Schrank hinaus. Der Rest im Schaltschrank sind nur Drähte, die sich streiten, wie sie dorthin kommen." },
+        "week2-4":{ caption:"Ein Haus aus Klebeband", blurb:"Wohnzimmer, Küche, Hauswirtschaftsraum — alles an einer Wand.", alt:"Eine Smart-Home-Demowand, auf der Räume mit schwarzem Klebeband abgegrenzt und als Living Room, Kitchen und Service Room beschriftet sind, mit Einbauspots, einem Glas-Touchschalter und einem Loxone-Modul, darunter Steckdosen", note:"Das ganze Haus ist eine Wand, auf der schwarzes Klebeband die Räume markiert, also liegt das Wohnzimmer vierzig Zentimeter von der Küche entfernt. Leichter zu debuggen als ein echtes — und viel leichter zu erreichen." },
+        "week2-5":{ caption:"Es funktioniert tatsächlich", blurb:"Alarm scharf, Schlafzimmer 21,8°, Küche 21,9°. Das waren wir.", alt:"Die Loxone-App-Oberfläche mit scharf geschalteter Einbruchmeldeanlage, einer Türsteuerung sowie Licht und Temperatur für Schlafzimmer mit 21,8 Grad und Küche mit 21,9 Grad", note:"Zwei Wochen Verkabelung und Blockdiagramme, und hier ist es als App: Alarm scharf, Tür gelistet, Schlafzimmer auf 21,8 Grad. Ich habe mich noch nie so über ein Zehntelgrad gefreut." },
         "leipzig-1":{ caption:"Leipzig Hauptbahnhof", blurb:"Angeblich Europas größter Bahnhof nach Fläche. Man merkt es.", alt:"Die lange Sandsteinfassade des Leipziger Hauptbahnhofs von der gegenüberliegenden Straßenseite, rechts fährt eine gelb-blaue Straßenbahn vorbei", note:"Der Bahnhof hat die Größe einer Kleinstadt und ein Einkaufszentrum darin, also begann jede Fahrt nach Leipzig mit zehn Minuten Suche nach dem richtigen Ausgang." },
         "leipzig-2":{ caption:"Runter zur S-Bahn", blurb:"Eine sehr lange Treppe und ein sehr sauberer Tunnel.", alt:"Blick eine steile Treppe hinunter in eine weiß geflieste S-Bahn-Station im Leipziger City-Tunnel, unten warten Fahrgäste auf dem Bahnsteig", note:"Die Stationen im City-Tunnel sind alles weiße Fliesen und gerade Linien, beleuchtet wie ein OP-Saal. Bei uns zu Hause sieht das anders aus, und ich habe das Foto vor allem aus Neid gemacht." },
         "leipzig-3":{ caption:"Die Glaskirche der Uni", blurb:"Halb Hörsaal, halb Kathedrale, und zwar mit Absicht.", alt:"Das Paulinum der Universität Leipzig am Augustusplatz, ein moderner Bau aus Glas und Stein in Form einer gotischen Kirchenfront mit Fensterrose", note:"Die Universität hat ein Gebäude aus Glas in der Form der Kirche gebaut, die hier stand, bis sie in den Sechzigern gesprengt wurde. Ein seltsames, scharfkantiges Ding davorzustehen — und mir hat es sehr gefallen." },
@@ -975,9 +1042,11 @@
         "dresden-6":{ caption:"In der Frauenkirche", blurb:"Luthers Kirche, aus dem eigenen Schutt wieder aufgebaut und in Pastell gestrichen.", alt:"Der pastellfarben-goldene Barockinnenraum der Dresdner Frauenkirche mit Blick auf Altar und Orgel, umlaufenden Emporen und vollen Bänken", note:"Blassrosa, Creme und Gold, Empore auf Empore, und kein Platz mehr frei. Schwer im Kopf zu behalten, dass das Ganze bis in die Neunziger ein Steinhaufen auf dem Platz war." },
         "freetime-1":{ caption:"Eine Antonow bei Nacht", blurb:"Wir sind zum Flughafen gelaufen, nur um ein sehr großes Flugzeug anzuschauen.", alt:"Ein großes Antonow-Frachtflugzeug nachts beleuchtet auf dem Vorfeld des Flughafens Leipzig/Halle, über ein dunkles Feld gesehen, im Vordergrund ein Fahrrad", note:"Schkeuditz hat einen Flughafen am Ende eines Spaziergangs, und der Flughafen hat Antonows. Mein Handy hat nur Matsch daraus gemacht, aber im Dunkeln neben etwas so Großem zu stehen war den Umweg wert." },
         "freetime-2":{ caption:"Der Bismarckturm", blurb:"Noch ein Spaziergang, noch ein großes graues Ding am Ende.", alt:"Wir drei stehen an einem sonnigen Nachmittag auf der Wiese vor dem steinernen Bismarckturm bei Schkeuditz", note:"So sahen unsere freien Nachmittage aus: etwas auf der Karte aussuchen, hinlaufen, fotografieren, zurücklaufen. Diesmal ein gedrungener Steinturm für Otto von Bismarck — und die Sonne kam genau so lange heraus, wie dieses Foto gedauert hat." },
-        "freetime-3":{ caption:"Abende mit der Gruppe", blurb:"Ut enim ad minim veniam, quis nostrud.", alt:"Platzhalterfoto: ein abendliches Treffen mit der Gruppe" },
-        "freetime-4":{ caption:"Die Landschaft erkunden", blurb:"Duis aute irure dolor in reprehenderit.", alt:"Platzhalterfoto: ein Spaziergang durch die Landschaft" },
-        "freetime-5":{ caption:"Letzte Nacht in Deutschland", blurb:"Excepteur sint occaecat cupidatat non proident.", alt:"Platzhalterfoto: die Gruppe am letzten Abend" }
+        "freetime-3":{ caption:"Das BMW-Werk", blurb:"Halb Fabrik, halb Kathedrale, mit Karosserien über dem Kopf.", alt:"Die weite Betonhalle des BMW-Werks in Leipzig, über den Besuchern eine verglaste Förderbrücke, darunter ein limettengrüner BMW in der Ausstellung", note:"Das Gebäude ist roher Beton und blaues Licht, und über dem Kopf gleiten unfertige Karosserien über eine Glasbrücke, während man dasteht. So baut niemand eine Fabrik, außer er will, dass man nach oben schaut." },
+        "freetime-4":{ caption:"Das würde ich nehmen", blurb:"Hätten sie den Schlüssel steckengelassen, wäre diese Karte kürzer.", alt:"Ein schwarzes BMW F 850 GS Reiseenduro-Motorrad auf einem Ausstellungspodest in der Halle, dahinter ein weiß-blau-rotes Modell und herumstehende Besucher", note:"Eine 850 GS auf weißem Podest, zum Anfassen nah und ganz sicher nicht an Praktikanten zu verkaufen. Ich habe sie länger angeschaut als jedes der Autos." },
+        "freetime-5":{ caption:"Halle, und ein Brötchen", blurb:"Vier Kirchtürme, ein Roter Turm und das Mittagessen in der Hand.", alt:"Selfie von uns dreien auf dem Marktplatz in Halle, dahinter der Rote Turm und die vier Türme der Marktkirche, in einer Hand ein Brötchen", note:"Auf Halles Marktplatz steht auf der einen Seite ein roter Turm und auf der anderen eine Kirche mit vier Türmen, und wir haben die meiste Zeit damit verbracht, uns aufs Essen zu einigen. Das Brötchen hat gewonnen." },
+        "freetime-6":{ caption:"Štúr, in Deutschland", blurb:"Der Mann, der uns die Schriftsprache gab — achthundert Kilometer von zu Hause.", alt:"Wir drei posieren um eine Bronzebüste von Ľudovít Štúr auf einem Steinsockel in einem Park in Halle, eine Hand liegt an der Wange der Büste", note:"Ľudovít Štúr hat in Halle studiert, also steht seine Büste in einem deutschen Park — der Mann, der uns die Schriftsprache gab, in der wir davor redeten. Mit der Würde des Moments haben wir es nicht so genau genommen." },
+        "freetime-7":{ caption:"Deutschlands älteste Schokoladenfabrik", blurb:"Halloren macht das in Halle seit 1804.", alt:"Im Werksverkauf der Halloren-Schokoladenfabrik in Halle, mit Paletten voller Pralinenschachteln, Geschenkkörben mit roten Schleifen und Regalen voller Süßigkeiten", note:"Halloren stellt seit 1804 in Halle Schokolade her, womit sie die älteste Deutschlands ist — und an diesem Nachmittag der teuerste Raum, den wir betreten haben. Alle gingen mit etwas wieder hinaus." }
       }
     },
     sk: {
@@ -999,7 +1068,7 @@
       },
       captions: {
         "home-1":{ caption:"Ahoj, som Jano", blurb:"Pracujem v Asseco CEIT a keď zrovna neprogramujem, najskôr hrám Factorio.", alt:"Portrét Jana pred Hlavnou stanicou v Drážďanoch v daždivý deň", note:"Prvý deň, Drážďany, a pršalo celý čas. Prišiel som sem programovať — nikto ma nevaroval, koľko z najbližších dvoch týždňov budem držať skrutkovač." },
-        "home-2":{ caption:"Hrám aj na gitare", blurb:"Trocha hudby ako protiváha k času pri obrazovke.", alt:"Jano hrá na gitare", note:"Doma mám gitaru, ktorá príde na rad vždy, keď obrazovka na ten deň vyhrala. Do kufra sa mi nezmestila — jediná vec, ktorú pri balení ľutujem." },
+        "home-2":{ caption:"Hrám aj na gitare", blurb:"Trocha hudby ako protiváha k času pri obrazovke.", alt:"Jano sedí doma s klasickou gitarou, na kolene zelený slovenský spevník a za ním knižnice", note:"To je ten zelený spevník, čo má pol Slovenska niekde v knižnici, a gitara, ktorá príde na rad vždy, keď obrazovka na ten deň vyhrala. Do kufra sa mi nezmestila — jediná vec, ktorú pri balení ľutujem." },
         "home-3":{ caption:"V rámci programu Erasmus+", blurb:"Dva týždne v Nemecku vďaka programu Erasmus+.", alt:"Grafika programu Erasmus+ na pozadí vlajky Európskej únie", note:"Bez Erasmu+ by z toho nebolo nič: dva týždne praxe v Nemecku, zaplatené programom, ktorý som poznal hlavne ako logo na plakáte na chodbe. Ten plakát to zjavne myslel vážne." },
         "home-4":{ caption:"Kde sa to všetko začalo — Bratislava", blurb:"Tabuľa odchodov na hlavnej stanici, pár minút pred odchodom.", alt:"Tabuľa odchodov na Hlavnej stanici v Bratislave", note:"Posledná fotka doma: tabuľa odchodov v Bratislave, pár minút pred odchodom. Ostatní počítali kufre; ja som počítal, koľko nástupíšť si ešte môžem pomýliť." },
         "home-5":{ caption:"Celá skupina v Drážďanoch", blurb:"Kufre, batohy a konečne všetci na jednom mieste.", alt:"Skupinová fotka Erasmus skupiny s batožinou na stanici v Drážďanoch", note:"Celá skupina, konečne na jednom mieste, s väčším počtom kufrov ako ľudí. Niekde v tej kope je taška, ktorú som potom hodinu hľadal." },
@@ -1008,11 +1077,11 @@
         "week1-3":{ caption:"Zapájame elektrické zásuvky", blurb:"My traja, stena plná dier a jeden skrutkovač.", alt:"Traja priatelia pri stene s elektrickými zásuvkami a otvorenými otvormi na káble", note:"Toto je tá časť IT kurzu, ktorá v brožúre nie je: my traja, stena plná dier a jeden jediný skrutkovač. Prišiel som za klávesnicou a dostal som stenu." },
         "week1-4":{ caption:"Bezpečnosť na prvom mieste", blurb:"(Nikto neprišiel k úhone.)", alt:"Detailný záber rúk zapájajúcich elektrickú zásuvku dvoma skrutkovačmi", note:"Dva skrutkovače, jedna zásuvka a fotograf s pochybnými prioritami. Na skrinke bolo všetko vypnuté a všetci máme ešte desať prstov." },
         "week1-5":{ caption:"Tabuľa inteligentnej domácnosti", blurb:"Posledná úloha prvého týždňa: nech svetlá robia to, čo im povie tablet.", alt:"Ruka ovláda cez farebné koliesko na tablete panel inteligentnej domácnosti so svetlami, vypínačmi a modulom Loxone, jedno svetlo svieti načerveno", note:"Prvý týždeň sa skončil pri stene plnej vypínačov, svetiel a jednej Loxone krabičky, zapojenej tak, aby to celé riadil tablet. Dosť dlho som vyberal presne ten správny odtieň červenej pre spálňu, v ktorej nikto nespí." },
-        "week2-1":{ caption:"Späť do práce, druhý týždeň", blurb:"Lorem ipsum dolor sit amet, consectetur.", alt:"Zástupná fotka: späť za stolom v pondelok" },
-        "week2-2":{ caption:"Prezentujeme náš projekt", blurb:"Sed do eiusmod tempor incididunt ut labore.", alt:"Zástupná fotka: prezentácia projektu pred tímom" },
-        "week2-3":{ caption:"Spoločné ladenie chýb", blurb:"Ut enim ad minim veniam, quis nostrud.", alt:"Zástupná fotka: dvaja ľudia pri ladení chýb na obrazovke" },
-        "week2-4":{ caption:"Odovzdávanie certifikátov", blurb:"Duis aute irure dolor in reprehenderit.", alt:"Zástupná fotka: odovzdávanie osvedčenia o absolvovaní" },
-        "week2-5":{ caption:"Lúčenie s kanceláriou", blurb:"Excepteur sint occaecat cupidatat non proident.", alt:"Zástupná fotka: posledné lúčenie v kancelárii" },
+        "week2-1":{ caption:"Späť za stolmi", blurb:"Druhý týždeň bol o Loxone a Loxone je hlavne o pozeraní.", alt:"Spolužiak si pri stole podopiera bradu rukou a pozerá na softvér Loxone Config na monitore, vedľa Mac mini a na stene za ním panely inteligentnej domácnosti", note:"Druhý týždeň vymenil skrutkovače za softvér: Loxone Config, skoro celý deň. Toto je presne ten výraz, ktorý po dvadsiatich minútach spraví každý." },
+        "week2-2":{ caption:"Kuchyňa, spálňa, krabice a drôty", blurb:"Dve miestnosti nakreslené ako bloky, kde je všetko pospájané so všetkým.", alt:"Obrazovka so softvérom Loxone Config, zelené bloky „Intelligent Room Controller“ pre kuchyňu a spálňu, prepojené čiarami so vstupmi a výstupmi", note:"Z každej miestnosti sa stane zelená krabica s tuctom vstupov po jednej strane a výstupov po druhej a spájaš ich čiarami, kým dom nefunguje. Prvé programovanie, pri ktorom chyba zhasne skutočné svetlo." },
+        "week2-3":{ caption:"Miniserver", blurb:"Celý dom beží na jednej zelenej krabici na lište.", alt:"Žiarivo zelený Loxone Miniserver na DIN lište v otvorenom elektrickom rozvádzači, okolo neho radové svorky a hnedá, modrá a sieťová kabeláž", note:"Všetko — svetlá, kúrenie, alarm — sa zbieha do tejto zelenej tehly na lište v skrinke. Zvyšok rozvádzača sú len drôty, ktoré sa dohadujú, ako sa k nej dostanú." },
+        "week2-4":{ caption:"Dom nakreslený páskou", blurb:"Obývačka, kuchyňa, technická miestnosť — všetko na jednej stene.", alt:"Demonštračná stena inteligentnej domácnosti s miestnosťami vyznačenými čiernou páskou a popismi Living Room, Kitchen a Service Room, so zápustnými svetlami, skleneným dotykovým vypínačom a modulom Loxone, pod nimi zásuvky", note:"Celý dom je jedna stena, na ktorej čierna páska vyznačuje miestnosti, takže obývačka je štyridsať centimetrov od kuchyne. Ladí sa to ľahšie ako skutočný dom a dosiahneš všade." },
+        "week2-5":{ caption:"Naozaj to funguje", blurb:"Alarm zapnutý, spálňa 21,8°, kuchyňa 21,9°. To sme my.", alt:"Rozhranie aplikácie Loxone so zapnutým alarmom, ovládaním dverí a svetlami a teplotami pre spálňu 21,8 stupňa a kuchyňu 21,9 stupňa", note:"Dva týždne zapájania a blokových schém a tu to je ako appka: alarm zapnutý, dvere v zozname, spálňa na 21,8 stupňa. Ešte nikdy som nemal takú radosť z jednej desatiny stupňa." },
         "leipzig-1":{ caption:"Hlavná stanica v Lipsku", blurb:"Vraj najväčšia stanica v Európe čo do plochy. Je to cítiť.", alt:"Dlhá pieskovcová fasáda hlavnej stanice v Lipsku z protiľahlej strany ulice, vpravo prechádza žlto-modrá električka", note:"Stanica má veľkosť menšieho mesta a vo vnútri obchodné centrum, takže každá cesta do Lipska začínala desiatimi minútami hľadania správneho východu." },
         "leipzig-2":{ caption:"Dole k S-Bahnu", blurb:"Veľmi dlhé schodisko a veľmi čistý tunel.", alt:"Pohľad dole strmým schodiskom do bielo obloženej stanice S-Bahnu v lipskom mestskom tuneli, dolu cestujúci na nástupišti", note:"Stanice v mestskom tuneli sú samá biela dlaždica a rovná čiara, nasvietené ako operačná sála. U nás doma to tak nevyzerá a fotku som spravil hlavne zo závisti." },
         "leipzig-3":{ caption:"Sklenený kostol univerzity", blurb:"Napoly prednášková sála, napoly katedrála, a celkom zámerne.", alt:"Paulinum Lipskej univerzity na Augustusplatzi, moderná stavba zo skla a kameňa v tvare gotického kostolného priečelia s rozetou", note:"Univerzita postavila sklenenú budovu v tvare kostola, ktorý tu stál, kým ho v šesťdesiatych rokoch nevyhodili do vzduchu. Čudná, ostrohranná vec, pred ktorou stojíš — a mne sa veľmi páčila." },
@@ -1036,9 +1105,11 @@
         "dresden-6":{ caption:"Vnútri Frauenkirche", blurb:"Lutherov kostol, znovu postavený z vlastnej sutiny a vymaľovaný do pastelov.", alt:"Pastelovo-zlatý barokový interiér drážďanskej Frauenkirche s pohľadom na oltár a organ, s poschodovými emporami a plnými lavicami", note:"Bledoružová, krémová a zlatá, empora na empore a ani jedno voľné miesto. Ťažko sa v hlave udrží, že to celé bolo až do deväťdesiatych rokov kopa kamenia na námestí." },
         "freetime-1":{ caption:"Antonov po zotmení", blurb:"Išli sme pešo na letisko len preto, aby sme videli veľmi veľké lietadlo.", alt:"Veľké nákladné lietadlo Antonov osvetlené v noci na ploche letiska Leipzig/Halle, pohľad cez tmavé pole, v popredí bicykel", note:"Schkeuditz má na konci jednej prechádzky letisko a na tom letisku stoja Antonovy. Mobil z toho urobil rozmazanú kašu, ale stáť po tme vedľa niečoho takého veľkého stálo za tú obchádzku." },
         "freetime-2":{ caption:"Bismarckova veža", blurb:"Ďalšia prechádzka, ďalšia veľká sivá vec na jej konci.", alt:"My traja stojíme na tráve pred kamennou Bismarckovou vežou pri Schkeuditzi v slnečné popoludnie", note:"Takto vyzerali naše voľné popoludnia: vybrať si niečo na mape, dôjsť tam, odfotiť to, vrátiť sa. Tentoraz zavalitá kamenná veža pre Otta von Bismarcka — a slnko vyšlo presne na ten čas, čo trvala táto fotka." },
-        "freetime-3":{ caption:"Večery so skupinou", blurb:"Ut enim ad minim veniam, quis nostrud.", alt:"Zástupná fotka: večerné stretnutie so skupinou" },
-        "freetime-4":{ caption:"Spoznávame okolitú krajinu", blurb:"Duis aute irure dolor in reprehenderit.", alt:"Zástupná fotka: prechádzka okolitou krajinou" },
-        "freetime-5":{ caption:"Posledná noc v Nemecku", blurb:"Excepteur sint occaecat cupidatat non proident.", alt:"Zástupná fotka: skupina počas posledného večera" }
+        "freetime-3":{ caption:"Závod BMW", blurb:"Napoly fabrika, napoly katedrála, s karosériami nad hlavou.", alt:"Rozľahlý betónový interiér závodu BMW v Lipsku, nad návštevníkmi presklený dopravník a dole vystavené limetkovo zelené BMW", note:"Budova je samý surový betón a modré svetlo a nad hlavou ti po sklenenom moste kĺžu nedokončené karosérie, kým tam stojíš. Takto nikto nepostaví fabriku, ak nechce, aby si sa pozeral hore." },
+        "freetime-4":{ caption:"Toto by som si zobral", blurb:"Keby v nej nechali kľúče, táto pohľadnica by bola kratšia.", alt:"Čierna cestovná enduro motorka BMW F 850 GS na výstavnom podstavci v hale, za ňou bielo-modro-červený model a okolo stojaci návštevníci", note:"Osemstopäťdesiatka GS na bielom podstavci, na dosah ruky a rozhodne nie na predaj praktikantom. Pozeral som sa na ňu dlhšie než na ktorékoľvek auto." },
+        "freetime-5":{ caption:"Halle a žemľa", blurb:"Štyri kostolné veže, jedna červená veža a obed v ruke.", alt:"Selfie nás troch na námestí v Halle, za nami Červená veža a štyri veže kostola Marktkirche, v jednej ruke žemľa", note:"Na námestí v Halle stojí na jednej strane červená veža a na druhej kostol so štyrmi vežami a my sme väčšinu času riešili, kde sa najeme. Vyhrala žemľa." },
+        "freetime-6":{ caption:"Štúr v Nemecku", blurb:"Muž, ktorý nám dal spisovnú reč, osemsto kilometrov od domu.", alt:"My traja pózujeme okolo bronzovej busty Ľudovíta Štúra na kamennom podstavci v parku v Halle, jedna ruka spočíva na líci busty", note:"Ľudovít Štúr študoval v Halle, takže v nemeckom parku stojí jeho busta — muž, ktorý nám dal spisovnú reč, ktorou sme sa pred ňou rozprávali. K dôstojnosti toho momentu sme veľmi neprispeli." },
+        "freetime-7":{ caption:"Najstaršia čokoládovňa v Nemecku", blurb:"Halloren to v Halle robí od roku 1804.", alt:"Interiér podnikovej predajne čokoládovne Halloren v Halle, s paletami balených čokolád, darčekovými košíkmi s červenými stuhami a regálmi plnými sladkostí", note:"Halloren vyrába čokoládu v Halle od roku 1804, čo z nej robí najstaršiu v Nemecku — a v to popoludnie aj najdrahšiu miestnosť, do akej sme vošli. Každý odtiaľ odchádzal s niečím." }
       }
     }
   };

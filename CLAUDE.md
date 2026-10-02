@@ -11,10 +11,10 @@ Built for a school presentation. Deployed as a static file, GitHub → Cloudflar
 ## Files
 
 - `index.html` — **the whole site's code.** One file: HTML + CSS + vanilla JS. No
-  frameworks, no build step, no external JS/CSS dependencies. ~96KB. (Was `erasmus.html`;
+  frameworks, no build step, no external JS/CSS dependencies. ~112KB. (Was `erasmus.html`;
   renamed so Cloudflare Pages serves it as the entry point.)
 - `data/<Gallery>/*.webp` — **the photos**, as ordinary files. `Home/`, `Week1/`,
-  `Week2/`, `Leipzig/`, `Dresden/`, `FreeTime/`. ~3.5MB for 32 photos, already
+  `Week2/`, `Leipzig/`, `Dresden/`, `FreeTime/`. ~4.4MB for 43 photos, already
   well-compressed webp. Deployed alongside `index.html`, and it must be committed or the
   live site shows placeholders. Directory names are capitalised and paths are
   **case-sensitive** on Pages, so `data/Week1/...` is not `data/week1/...`.
@@ -104,9 +104,9 @@ one attribute + one dict key, nothing else.
   columns side by side in one — they get too narrow to read. `showImage()` adds
   `.is-portrait` to `.image-frame` when `w < h`, and the back stacks instead. This case
   didn't exist while everything was cropped to 3:2 landscape.
-- `.image-frame` needs `min-width:0` — it's a flex item, and without that, flexbox won't
-  let it shrink below its content's intrinsic width. That's what caused arrows to get
-  clipped off-screen on mobile before this was added.
+- `.image-frame` needs `min-width:0` — it's a flex item (of `.stage` now), and without
+  that, flexbox won't let it shrink below its content's intrinsic width. That's what
+  caused arrows to get clipped off-screen on mobile before this was added.
 - The 0-image-in-a-gallery case is real UI, not dead code (`render()` guards it, arrows
   get `disabled`) — keep it even though every gallery currently has content.
 - `showImage()` has two paths (real `src` → load/error listeners handle the fade + missing
@@ -121,10 +121,23 @@ one attribute + one dict key, nothing else.
   drives the card's box while the back is `position:absolute; inset:0` to match it — this
   is what preserves the `.img-el`-drives-sizing rule above, so don't give `.postcard` or
   either face its own `width`/`aspect-ratio`.
-- `.postcard-front`'s base `padding` is declared *after* the `@media (max-width:420px)`
-  block that used to override `.image-frame`'s padding, so that mobile override now lives
-  in the postcard section's own `max-width:420px` query. Equal specificity — source order
-  is the only thing deciding it. Don't move the base rule below its override again.
+- **`.stage` is what keeps the arrows still.** The card is only as wide as its photo, so
+  in a plain centred flex row `[arrow][card][arrow]` both arrows slide sideways on every
+  navigation — far enough that the next arrow walks out from under the pointer between
+  clicks. `.stage` is a fixed-width column the card is centred inside, so the arrows never
+  move. Its width is `calc(min(66vw,760px) + 2 * var(--frame-pad))` — the widest a photo
+  can be, plus the card's two white borders. If you change `.img-el`'s width caps, change
+  this to match or a wide card will overhang the stage and slide under an arrow.
+  `.stage` keeps `flex-shrink:1` and `min-width:0` on purpose, so a very narrow phone can
+  still compress the row rather than pushing the arrows off-screen (the old mobile bug);
+  that compression depends on the viewport, never on which photo is showing, so the
+  arrows still hold still while navigating. `.img-el`'s `max-width:100%` is what keeps the
+  photo inside the stage when it does compress.
+- `--frame-pad` is the card's white border, and it sets **both** `.postcard-front`'s
+  padding and `.stage`'s width — they have to agree, so they read from one token. The
+  `max-width:420px` query retunes the token rather than overriding the padding rule.
+  (It used to be a `.postcard-front{padding:...}` override that had to sit *after* the
+  base rule to win on source order; as a token that race can't happen.)
 - Both faces stay in the DOM, so `setFlipped()` toggles `aria-hidden` on each; that (not
   `backface-visibility`) is what keeps a screen reader off the hidden side.
 - The flip control is a sibling of `.postcard`, not a child — inside it, it would rotate
@@ -132,14 +145,25 @@ one attribute + one dict key, nothing else.
 
 ## Current content state
 
-41 slots, 32 with photos. Gallery sizes are **not** 5 each — `leipzig` has 15 and
-`dresden` has 6; the viewer is length-agnostic, so add and remove freely.
+**43 slots, 43 photos — every slot is filled.** No empty `src` and no lorem ipsum left
+anywhere. Gallery sizes are **not** 5 each: `home` 5, `week1` 5, `week2` 5, `leipzig` 15,
+`dresden` 6, `freetime` 7. The viewer is length-agnostic, so add and remove freely.
 
-- Fully done (photo + real caption/blurb/alt/note in en/de/sk): all of `home` except
-  `home-2`, all of `week1`, `leipzig-1..15`, `dresden-1..6`, `freetime-1..2`.
-- Real text, no photo yet: `home-2`, reserved for a guitar photo.
-- Still placeholder (lorem ipsum blurb, no `note`, empty `src`): `week2-1..5` and
-  `freetime-3..5`. `data/Week2/` exists but is empty.
+The empty-`src` placeholder path and the 0-image gallery guard are therefore no longer
+exercised by any current content. **Keep both** — they're what makes it safe to add an id
+before its photo exists, which is how every gallery here got built.
+
+- `week2` is the Loxone arc, in this order: at the desks → the Config block diagram →
+  the Miniserver in its cabinet → the taped-out demo wall → the finished app.
+- `freetime` runs: the two walks from Gut Wehlitz (Antonov, Bismarck tower) → BMW plant
+  → the Halle day (market square, the Ľudovít Štúr bust, Halloren chocolate).
+- Postmark places now vary within a gallery: `freetime-3/4` are Leipzig, `freetime-5/6/7`
+  are Halle, and `home-2` is **a guess** — it's the guitar photo taken at home before the
+  trip, and Bratislava was borrowed from `home-4`'s departure board. Correct it to Jano's
+  actual town.
+- Two files in `data/FreeTime/` have **spaces in their names** (`BMW motorcycle.webp`,
+  `Oldest choco shop.webp`), so their `IMAGES` paths carry `%20`. Renaming the files
+  without spaces, and fixing the two paths, would be tidier.
 - **Leipzig captions are drafted from the photos, not from Jano's account of the day** —
   he said he'd supply the details later. The facts in them (the Bach churches, the
   monument, the Koliba stall) are read off the images; `leipzig-4` is deliberately called
@@ -147,7 +171,7 @@ one attribute + one dict key, nothing else.
 - `data/Dresden/dresden_zwinger.webp` is **not** the Zwinger — it's the Katholische
   Hofkirche. The caption says Hofkirche and the note jokes about the filename. Rename the
   file (and its `IMAGES` path) if that ever gets tidied.
-- All 41 `PHOTO_META` dates are still `""`, so postmarks show a place but no date.
+- All 43 `PHOTO_META` dates are still `""`, so postmarks show a place but no date.
 
 ## Caption style
 
